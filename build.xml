@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<project name="APL" basedir="." default="run">
+
+    <property environment="env"/>
+
+    <property name="main.class"     value="com.ezanmoto.apl.Interpreter"/>
+
+    <property name="production.src" value="src"/>
+
+    <property name="build.dir"      value="build"/>
+    <property name="classes.dir"    value="${build.dir}/classes"/>
+
+    <property name="lib.dir"        value="lib"/>
+    <property name="jlisp.jar"      value="JLisp.jar"/>
+
+    <property name="scala.home"     value="${env.SCALA_HOME}"/>
+
+    <property name="scala.jar"
+              value="${scala.home}/lib/scala-library.jar"/>
+
+    <path id="build.classpath">
+        <pathelement location="${classes.dir}"/>
+        <pathelement location="${scala.home}/lib/scala-compiler.jar"/>
+        <pathelement location="${scala.jar}"/>
+        <fileset dir="${lib.dir}">
+            <include name="${jlisp.jar}"/>
+        </fileset>
+    </path>
+
+    <taskdef resource="scala/tools/ant/antlib.xml"
+             classpathref="build.classpath"/>
+
+    <path id="classpath">
+    </path>
+
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+    </target>
+
+    <target name="compile">
+        <mkdir dir="${classes.dir}"/>
+        <scalac srcdir="${production.src}" destdir="${classes.dir}"
+                classpathref="build.classpath"/>
+    </target>
+
+    <target name="run" depends="compile">
+        <java classname="${main.class}" classpathref="build.classpath"/>
+    </target>
+
+</project>
