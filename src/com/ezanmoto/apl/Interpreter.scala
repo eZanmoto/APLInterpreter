@@ -2,6 +2,21 @@ package com.ezanmoto.apl
 
 import java.io.InputStream
 
+/** Char is converted to Character explicitly */
+
+object Char2Character {
+  implicit def Char2Character( c: Char ) = Character( c )
+}
+
+class Character( c: Char ) {
+  def isWhitespace( c: Char ) = c == ' ' || c == '\t'
+}
+
+object Character {
+  def apply( c: Char ) = new Character( c )
+  def unapply( c: Char ) = Some( c )
+}
+
 class CharStream( stream: InputStream ) {
 
   private var head: Option[Char] = None
@@ -21,9 +36,59 @@ class CharStream( stream: InputStream ) {
       throw new IllegalArgumentException(
         "Expected '" + c + "' but got '" + this.peek + "'" )
 
-  def clear(): Unit =
+  def clear(): Unit = {
     while( stream.available > 0 )
       getNext
+    head = None
+  }
+}
+
+class APLInterpreter( in: CharStream ) {
+
+  var isRunning = true
+
+  def read() = {
+    skipWhitespace()
+    ( in peek ) match {
+      case '\'' => readString()
+      case ':'  => readCommand()
+      case _    => error()
+    }
+  }
+
+  def error() = {
+    in.clear()
+    println( "[!] Error" )
+  }
+
+  def readString() = {
+    in eat '\''
+    var buffer = ""
+    var c = in.peek()
+    while ( c != '\'' ) {
+      buffer = buffer + c
+      in eat c
+      c = in.peek()
+    }
+    println( buffer )
+    in eat '\''
+  }
+
+  def skipWhitespace() = {
+    var c = in.peek()
+    while ( c isWhitespace ) {
+      in eat c
+      c = in.peek()
+    }
+  }
+
+  def readCommand() = {
+    in eat ':'
+    ( in peek ) match {
+      case 'q' => in eat 'q'; println( "Goodbye." ); isRunning = false
+      case _   => error()
+    }
+  }
 }
 
 object Interpreter {
@@ -31,71 +96,12 @@ object Interpreter {
   private var running = true
 
   def main( args: Array[String] ) = {
+    val stream = new CharStream( System.in )
+    val interpreter = new APLInterpreter( stream )
     println( "CLEAR WS" )
-    while ( running ) {
+    while ( interpreter isRunning ) {
       print( "      " )
-      read( new CharStream( System.in ) )
+      interpreter.read()
     }
   }
-
-  def read( in: CharStream ) = {
-    skipWhitespace( in )
-    ( in peek ) match {
-      case '\'' => this readString in; 
-      case ':'  => this readCommand in
-      case _    => this error in
-    }
-  }
-
-  def error( in: CharStream ) = {
-    in.clear()
-    println( "[!] Error" )
-  }
-
-  def readString( in: CharStream ) = {
-    in eat '\''
-    var buffer = ""
-    var c = in.peek
-    while ( c != '\'' ) {
-      buffer = buffer + c
-      in eat c
-      c = in.peek
-    }
-    println( buffer )
-    in eat '\''
-  }
-
-  def skipLine( in: CharStream ) = {
-    var c = in.peek
-    while ( c != '\n' && c != '\r' ) {
-      in eat c
-      c = in.peek
-    }
-    in eat c
-  }
-
-  def skipWhitespace( in: CharStream ) = {
-    var c = in.peek
-    while ( this isWhitespace c ) {
-      in eat c
-      c = in.peek
-    }
-  }
-
-  def isWhitespace( c: Char ) = c match {
-    case ' ' | '\t' | '\n' => true
-    case _ => false
-  }
-
-  def readCommand( in: CharStream ) = {
-    in eat ':'
-    ( in peek ) match {
-      case 'q' => in eat 'q'; println( "Goodbye." ); running = false
-      case _   => this error in
-    }
-  }
-}
-
-object Character {
-  def unapply( c: Char ) = Some( c )
 }

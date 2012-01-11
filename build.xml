@@ -10,9 +10,6 @@
     <property name="build.dir"      value="build"/>
     <property name="classes.dir"    value="${build.dir}/classes"/>
 
-    <property name="lib.dir"        value="lib"/>
-    <property name="jlisp.jar"      value="JLisp.jar"/>
-
     <property name="scala.home"     value="${env.SCALA_HOME}"/>
 
     <property name="scala.jar"
@@ -22,9 +19,6 @@
         <pathelement location="${classes.dir}"/>
         <pathelement location="${scala.home}/lib/scala-compiler.jar"/>
         <pathelement location="${scala.jar}"/>
-        <fileset dir="${lib.dir}">
-            <include name="${jlisp.jar}"/>
-        </fileset>
     </path>
 
     <taskdef resource="scala/tools/ant/antlib.xml"
