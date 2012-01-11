@@ -2,19 +2,13 @@ package com.ezanmoto.apl
 
 import java.io.InputStream
 
-/** Char is converted to Character explicitly */
-
-object Char2Character {
-  implicit def Char2Character( c: Char ) = Character( c )
-}
-
-class Character( c: Char ) {
-  def isWhitespace( c: Char ) = c == ' ' || c == '\t'
-}
-
 object Character {
   def apply( c: Char ) = new Character( c )
   def unapply( c: Char ) = Some( c )
+}
+
+object Integer {
+  def unapply( c: Char ) = if ( c isDigit ) Some( c ) else None
 }
 
 class CharStream( stream: InputStream ) {
@@ -52,6 +46,7 @@ class APLInterpreter( in: CharStream ) {
     ( in peek ) match {
       case '\'' => readString()
       case ':'  => readCommand()
+      case Integer( c ) => readInteger()
       case _    => error()
     }
   }
@@ -72,6 +67,17 @@ class APLInterpreter( in: CharStream ) {
     }
     println( buffer )
     in eat '\''
+  }
+
+  def readInteger() = {
+    var buffer = ""
+    var c = in.peek()
+    while ( c isDigit ) {
+      buffer = buffer + c
+      in eat c
+      c = in.peek()
+    }
+    println( buffer )
   }
 
   def skipWhitespace() = {
