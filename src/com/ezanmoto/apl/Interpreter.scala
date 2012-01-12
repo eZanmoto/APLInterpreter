@@ -15,7 +15,7 @@ class MyString( string: String ) {
   val skipWhitespace = this skipWS string
 
   private def skipWS( s: String ): String =
-    if ( s.head == ' ' || s.head == '\t' )
+    if ( s.length > 0 && ( s.head == ' ' || s.head == '\t' ) )
       this skipWS ( s drop 1 )
     else
       s
@@ -50,7 +50,7 @@ class APLInterpreter {
     in.head match {
       case '\'' => r = this readString in
       case ':'  => r = this readCommand in
-      case Integer( _ ) => r = ( this readInteger in ) toString
+      case '~' | Integer( _ ) => r = ( this readExpression in ) toString
       case _    => r = this unexpected in
     }
     r
@@ -76,35 +76,45 @@ class APLInterpreter {
     }
   }
 
-  def readInteger( line: String ): Int = {
-    var in = line skipWhitespace
-    var buffer = ""
-    while ( ( in.length > 0 ) && ( in.head isDigit ) ) {
-      buffer = buffer + in.head
-      in = in drop 1
-    }
-    buffer toInt
+  def readExpression( line: String ): Int = {
+    val r = readInteger( line )
+    val a = r._1
+    var in = r._2.skipWhitespace
+    if ( in.length > 0 )
+      in.head match {
+        case '+' => a + readInteger( in eat '+' )._1
+        case '-' => a - readInteger( in eat '-' )._1
+        case '*' => a * readInteger( in eat '*' )._1
+        case '%' => a / readInteger( in eat '%' )._1
+        case _   => println( unexpected( in ) ); a
+      }
+    else
+      a
   }
 
-  /*
-  def readExpression( a: Int ): Int = {
-    skipWhitespace()
-    ( in peek ) match {
-      case '+' => in eat '+'; a + readInteger()
-      case '-' => in eat '-'; a - readInteger()
-      case '*' => in eat '*'; a * readInteger()
-      case '%' => in eat '%'; a / readInteger()
-      case _   => error(); 0
+  def readInteger( line: String ): (Int, String) = {
+    var in = line skipWhitespace
+    var buffer = ""
+    if ( in.head == '~' ) {
+      buffer = buffer + "-"
+      in = in drop 1
     }
+    do {
+      buffer = buffer + in.head
+      in = in drop 1
+    } while ( ( in.length > 0 ) && ( in.head isDigit ) )
+    ( buffer toInt, in )
   }
-  */
 
   def readCommand( line: String ): String = {
     val in = line eat ':'
-    in.head match {
-      case 'q' => isRunning = false; "Goodbye."
-      case _   => this unexpected in
-    }
+    if ( in.length > 0 )
+      in.head match {
+        case 'q' => isRunning = false; "Goodbye."
+        case _   => this unexpected in
+      }
+    else
+      error( "Expected further input" )
   }
 }
 
