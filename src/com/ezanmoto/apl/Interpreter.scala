@@ -48,7 +48,7 @@ object Integer {
 
 class APLInterpreter {
 
-  private var env = Map[String, Int]()
+  private var env = Map[String, Either[Int, List[Int]]]()
 
   private var in: LookaheadStream = new LookaheadStream( "" )
 
@@ -64,10 +64,13 @@ class APLInterpreter {
     in.peek match {
       case '\'' => println( readString() )
       case ':'  => runCommand()
-      case '~' | Integer( _ ) => println( expression() )
+      case '~' | Integer( _ ) => printEither( expression() )
       case Uppercase( _ ) => assignment()
       case _    => unexpected()
     }
+    in.skipWhitespace()
+    if ( ! in.isEmpty )
+      error( "Trailing characters" )
   }
 
   def unexpected() = error( "Unexpected '" + in.peek + "'" )
@@ -98,37 +101,55 @@ class APLInterpreter {
       }
   }
 
-  def expression(): Int = expression( readValue() )
+  def expression(): Either[Int, List[Int]] = readValue() match {
+    case Left( v )  => expression( v )
+    case Right( v ) => error( "Can't allow that" )
+  }
 
-  def expression( a: Int ): Int = {
+  def expression( a: Int ): Either[Int, List[Int]] = {
     in.skipWhitespace()
     if ( in.isEmpty )
-      a
+      Left( a )
     else
       in.peek match {
-        case '+' => in eat '+'; a + readValue()
-        case '-' => in eat '-'; a - readValue()
-        case 'x' => in eat 'x'; a * readValue()
-        case '%' => {
-          in eat '%'
-          val b = readValue()
-          if ( b == 0 )
-            error( "Can't divide by 0" )
-          else
-            a / b
-        }
-        case _   => unexpected()
+        case '+' => in eat '+'; Left( add( a, readValue() ) )
+        case '%' => in eat '%'; Left( div( a, readValue() ) )
+        case _   => Right( readList( a ) )
       }
   }
 
-  def readValue(): Int = {
+  def add( a: Int, b: Either[Int, List[Int]] ): Int = b match {
+    case Left( v )  => a + v
+    case Right( v ) => error( "Can't add int to list" )
+  }
+
+  def div( a: Int, b: Either[Int, List[Int]] ): Int = b match {
+    case Left( v )  => if ( v == 0 ) error( "Can't divide by 0" ) else a / v
+    case Right( v ) => error( "Can't divide int by list" )
+  }
+
+  def readList( a: Int ): List[Int] = {
+    in.skipWhitespace()
+    if ( in.isEmpty )
+      unexpected()
+    else {
+      var list = a :: Nil
+      while ( ! in.isEmpty && in.peek.isDigit ) {
+        list = list ::: List( readInteger() )
+        in.skipWhitespace()
+      }
+      list
+    }
+  }
+
+  def readValue(): Either[Int, List[Int]] = {
     in.skipWhitespace()
     if ( in.isEmpty )
       error( "Expected '~', identifier or integer" )
     else
       in.peek match {
         case Uppercase( _ ) => this valueOf readName()
-        case Integer( _ ) | '~' => readInteger()
+        case Integer( _ ) | '~' => Left( readInteger() )
         case _ => error( "Expected '~', identifier or integer" )
       }
   }
@@ -149,14 +170,14 @@ class APLInterpreter {
 
   def readNumber(): Int = {
     in.skipWhitespace()
-    if ( in.isEmpty || ( ! in.peek.isDigit ) )
+    if ( in.isEmpty || ! in.peek.isDigit )
       error( "Expected integer" )
     else {
       var buffer = ""
       do {
         buffer = buffer + in.peek
         in.skip()
-      } while ( ! in.isEmpty && ( in.peek isDigit ) )
+      } while ( ! in.isEmpty && in.peek.isDigit )
       buffer.toInt;
     }
   }
@@ -165,17 +186,25 @@ class APLInterpreter {
     val name = readName()
     in.skipWhitespace()
     if ( in.isEmpty ) {
-      println( valueOf( name ) )
+      printEither( valueOf( name ) )
     } else if ( in.peek == '<' ) {
       in.eat( "<-" )
       in.skipWhitespace()
       env = env + ( name -> expression() )
     } else {
-      println( expression( valueOf( name ) ) )
+      valueOf( name ) match {
+        case Left( v )  => printEither( expression( v ) )
+        case Right( v ) => error( "Not yet implemented" )
+      }
     }
   }
 
-  def valueOf( name: String ): Int = {
+  def printEither( e: Either[Int, List[Int]] ) = e match {
+    case Left( v )  => println( v )
+    case Right( v ) => println( v )
+  }
+
+  def valueOf( name: String ): Either[Int, List[Int]] = {
     val value = env get name
     if ( value == None )
       error( "'" + name + "' has not been declared" )
