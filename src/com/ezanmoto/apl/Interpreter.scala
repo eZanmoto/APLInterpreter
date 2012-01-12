@@ -98,25 +98,38 @@ class APLInterpreter {
       }
   }
 
-  def expression(): Int = {
-    val a = readInteger()
+  def expression(): Int = expression( readValue() )
+
+  def expression( a: Int ): Int = {
     in.skipWhitespace()
     if ( in.isEmpty )
       a
     else
       in.peek match {
-        case '+' => in eat '+'; a + readInteger()
-        case '-' => in eat '-'; a - readInteger()
-        case '*' => in eat '*'; a * readInteger()
+        case '+' => in eat '+'; a + readValue()
+        case '-' => in eat '-'; a - readValue()
+        case 'x' => in eat 'x'; a * readValue()
         case '%' => {
           in eat '%'
-          val b = readInteger()
+          val b = readValue()
           if ( b == 0 )
             error( "Can't divide by 0" )
           else
             a / b
         }
         case _   => unexpected()
+      }
+  }
+
+  def readValue(): Int = {
+    in.skipWhitespace()
+    if ( in.isEmpty )
+      error( "Expected '~', identifier or integer" )
+    else
+      in.peek match {
+        case Uppercase( _ ) => this valueOf readName()
+        case Integer( _ ) | '~' => readInteger()
+        case _ => error( "Expected '~', identifier or integer" )
       }
   }
 
@@ -152,16 +165,22 @@ class APLInterpreter {
     val name = readName()
     in.skipWhitespace()
     if ( in.isEmpty ) {
-      val value = env get name
-      if ( value == None )
-        error( "'" + name + "' has not been declared" )
-      else
-        println( ( env get name ) get )
-    } else {
+      println( valueOf( name ) )
+    } else if ( in.peek == '<' ) {
       in.eat( "<-" )
       in.skipWhitespace()
       env = env + ( name -> expression() )
+    } else {
+      println( expression( valueOf( name ) ) )
     }
+  }
+
+  def valueOf( name: String ): Int = {
+    val value = env get name
+    if ( value == None )
+      error( "'" + name + "' has not been declared" )
+    else
+      value.get
   }
 
   def readName() = {
