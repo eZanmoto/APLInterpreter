@@ -85,26 +85,46 @@ class APLInterpreter {
         case '+' => a + readInteger( in eat '+' )._1
         case '-' => a - readInteger( in eat '-' )._1
         case '*' => a * readInteger( in eat '*' )._1
-        case '%' => a / readInteger( in eat '%' )._1
+        case '%' => {
+          val b = readInteger( in eat '%' )._1
+          if ( b == 0 ) {
+            println( domain( "Can't divide by 0" ) )
+            0
+          } else
+            a / b
+        }
         case _   => println( unexpected( in ) ); a
       }
     else
       a
   }
 
+  def domain( s: String ) = "DOMAIN ERROR: " + s
+
   def readInteger( line: String ): (Int, String) = {
     var in = line skipWhitespace
     var buffer = ""
-    if ( in.head == '~' ) {
-      buffer = buffer + "-"
-      in = in drop 1
-    }
-    do {
-      buffer = buffer + in.head
-      in = in drop 1
-    } while ( ( in.length > 0 ) && ( in.head isDigit ) )
-    ( buffer toInt, in )
+    if ( in.length > 0 ) {
+      if ( in.head == '~' ) {
+        buffer = buffer + "-"
+        in = in drop 1
+      }
+      if ( in.length > 0 ) {
+        do {
+          buffer = buffer + in.head
+          in = in drop 1
+        } while ( ( in.length > 0 ) && ( in.head isDigit ) )
+        ( buffer toInt, in )
+      } else {
+        println( syntax( "Expected integer" ) )
+        ( 0, in )
+      }
+    } else
+      println( syntax( "Expected integer" ) )
+      ( 0, in )
   }
+
+  def syntax( s: String ) = "SYNTAX ERROR: " + s
 
   def readCommand( line: String ): String = {
     val in = line eat ':'
