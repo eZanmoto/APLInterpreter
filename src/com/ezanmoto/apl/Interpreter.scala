@@ -50,6 +50,7 @@ class APLInterpreter {
     in.head match {
       case '\'' => r = this readString in
       case ':'  => r = this readCommand in
+      case Integer( _ ) => r = ( this readInteger in ) toString
       case _    => r = this unexpected in
     }
     r
@@ -75,19 +76,17 @@ class APLInterpreter {
     }
   }
 
-  /*
-  def readInteger(): Int = {
-    skipWhitespace()
+  def readInteger( line: String ): Int = {
+    var in = line skipWhitespace
     var buffer = ""
-    var c = in.peek()
-    while ( c isDigit ) {
-      buffer = buffer + c
-      in eat c
-      c = in.peek()
+    while ( ( in.length > 0 ) && ( in.head isDigit ) ) {
+      buffer = buffer + in.head
+      in = in drop 1
     }
-    readExpression( buffer toInt )
+    buffer toInt
   }
 
+  /*
   def readExpression( a: Int ): Int = {
     skipWhitespace()
     ( in peek ) match {
@@ -95,16 +94,7 @@ class APLInterpreter {
       case '-' => in eat '-'; a - readInteger()
       case '*' => in eat '*'; a * readInteger()
       case '%' => in eat '%'; a / readInteger()
-      case '\n' | '\r' => in.clear(); a
       case _   => error(); 0
-    }
-  }
-
-  def skipWhitespace() = {
-    var c = in.peek()
-    while ( c == ' ' || c == '\t' ) {
-      in eat c
-      c = in.peek()
     }
   }
   */
