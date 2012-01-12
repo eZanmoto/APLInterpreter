@@ -3,33 +3,41 @@ package com.ezanmoto.apl
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
-class MyString( string: String ) {
+class LookaheadStream( private var string: String ) {
 
-  def eat( c: Char ) =
-    if ( string.head == c )
-      string drop 1
+  def isEmpty = ! this.isNotEmpty
+
+  def isNotEmpty = string.length > 0
+
+  def peek: Char =
+    if ( this isEmpty )
+      throw new RuntimeException( "Cannot peek beyond end of stream" )
+    else
+      string.head
+
+  def eat( c: Char ): Unit =
+    if ( c == peek )
+      string = string drop 1
     else
       throw new IllegalArgumentException(
-          "Expected '" + c + "', got '" + string.head + "'" )
+          "Expected '" + c + "', got '" + peek + "'" )
 
-  val skipWhitespace = this skipWS string
+  def drop(): Char = {
+    val c = peek
+    skip()
+    c
+  }
 
-  private def skipWS( s: String ): String =
-    if ( s.length > 0 && ( s.head == ' ' || s.head == '\t' ) )
-      this skipWS ( s drop 1 )
-    else
-      s
+  def skip(): Unit = string = string drop 1
+
+  def skipWhitespace(): Unit =
+      while ( this.isNotEmpty && peek.isWhitespace )
+        skip()
 }
 
-object String2MyString {
-  implicit def string2MyString( s: String ) = new MyString( s )
-}
-
-import String2MyString._
-
-object Character {
+object Uppercase {
   def apply( c: Char ) = new Character( c )
-  def unapply( c: Char ) = Some( c )
+  def unapply( c: Char ) = if ( c >= 'A' && c <= 'Z' ) Some( c ) else None
 }
 
 object Integer {
@@ -38,103 +46,103 @@ object Integer {
 
 class APLInterpreter {
 
+  private var env = Map[String, Int]()
+
+  private var in: LookaheadStream = new LookaheadStream( "" )
+
   var isRunning = true
 
-  def evaluate( line: String ) = {
-    println( this read line )
+  def interpret( line: String ): Unit = {
+    this.in = new LookaheadStream( line )
+    interpret(): Unit
   }
 
-  def read( line: String): String = {
-    val in: String = line skipWhitespace
-    var r: String = ""
-    in.head match {
-      case '\'' => r = this readString in
-      case ':'  => r = this readCommand in
-      case '~' | Integer( _ ) => r = ( this readExpression in ) toString
-      case _    => r = this unexpected in
+  def interpret(): Unit = {
+    in.skipWhitespace()
+    in.peek match {
+      case '\'' => println( readString() )
+      case ':'  => runCommand()
+      case '~' | Integer( _ ) => println( expression() )
+      case _    => unexpected()
     }
-    r
   }
 
-  def unexpected( s: String ): String =
-    error( "Unexpected input, '" + s.head + "'" )
+  def unexpected() = error( "Unexpected '" + in.peek + "'" )
 
-  def error( message: String ): String = "[!] Error: " + message
-
-  def readString( in: String ): String = {
-    var line = in eat '\''
+  def readString(): String = {
+    in eat '\''
     var buffer = ""
-    while ( line.length > 0 && line.head != '\'' ) {
-      buffer = buffer + line.head
-      line = line drop 1
-    }
-    if ( line.length == 0 )
-      error( "Expected end of string" )
+    while ( ! in.isEmpty && in.peek != '\'' )
+      buffer = buffer + in.drop
+    if ( in.isEmpty )
+      error( "Expected string terminator" )
     else {
-      line eat '\''
+      in eat '\''
       buffer
     }
   }
 
-  def readExpression( line: String ): Int = {
-    val r = readInteger( line )
-    val a = r._1
-    var in = r._2.skipWhitespace
-    if ( in.length > 0 )
-      in.head match {
-        case '+' => a + readInteger( in eat '+' )._1
-        case '-' => a - readInteger( in eat '-' )._1
-        case '*' => a * readInteger( in eat '*' )._1
+  def error( s: String ) = throw new RuntimeException( "[!] Error: " + s )
+
+  def runCommand(): Unit = {
+    in eat ':'
+    if ( in.isEmpty )
+      error( "Expected further input" )
+    else
+      in.peek match {
+        case 'q' => isRunning = false; println( "Goodbye." )
+        case _   => unexpected()
+      }
+  }
+
+  def expression(): Int = {
+    val a = readInteger()
+    in.skipWhitespace()
+    if ( in.isEmpty )
+      a
+    else
+      in.peek match {
+        case '+' => in eat '+'; a + readInteger()
+        case '-' => in eat '-'; a - readInteger()
+        case '*' => in eat '*'; a * readInteger()
         case '%' => {
-          val b = readInteger( in eat '%' )._1
-          if ( b == 0 ) {
-            println( domain( "Can't divide by 0" ) )
-            0
-          } else
+          in eat '%'
+          val b = readInteger()
+          if ( b == 0 )
+            error( "Can't divide by 0" )
+          else
             a / b
         }
-        case _   => println( unexpected( in ) ); a
+        case _   => unexpected()
       }
-    else
-      a
   }
 
-  def domain( s: String ) = "DOMAIN ERROR: " + s
-
-  def readInteger( line: String ): (Int, String) = {
-    var in = line skipWhitespace
-    var buffer = ""
-    if ( in.length > 0 ) {
-      if ( in.head == '~' ) {
-        buffer = buffer + "-"
-        in = in drop 1
+  def readInteger(): Int = {
+    in.skipWhitespace()
+    if ( in.isEmpty )
+      error( "Expected integer or '~'" )
+    else {
+      var isNegative = false
+      if ( in.peek == '~' ) {
+        isNegative = true
+        in eat '~'
       }
-      if ( in.length > 0 ) {
-        do {
-          buffer = buffer + in.head
-          in = in drop 1
-        } while ( ( in.length > 0 ) && ( in.head isDigit ) )
-        ( buffer toInt, in )
-      } else {
-        println( syntax( "Expected integer" ) )
-        ( 0, in )
-      }
-    } else
-      println( syntax( "Expected integer" ) )
-      ( 0, in )
+      readNumber() * ( if ( isNegative ) -1 else 1 )
+    }
   }
 
-  def syntax( s: String ) = "SYNTAX ERROR: " + s
-
-  def readCommand( line: String ): String = {
-    val in = line eat ':'
-    if ( in.length > 0 )
-      in.head match {
-        case 'q' => isRunning = false; "Goodbye."
-        case _   => this unexpected in
-      }
-    else
-      error( "Expected further input" )
+  def readNumber(): Int = {
+    in.skipWhitespace()
+    if ( in.isEmpty || ( ! in.peek.isDigit ) )
+      error( "Expected integer" )
+    else {
+      var buffer = ""
+      do {
+        buffer = buffer + in.peek
+        in.skip()
+      } while ( in.isNotEmpty && ( in.peek isDigit ) )
+      buffer.toInt;
+    }
   }
 }
 
@@ -148,9 +156,12 @@ object Interpreter {
     val interpreter = new APLInterpreter
     println( "CLEAR WS" )
     while ( interpreter isRunning ) {
-      print( "      " )
-      val line = in.readLine()
-      interpreter.evaluate( line )
+      try {
+        print( "      " )
+        interpreter.interpret( in.readLine() )
+      } catch {
+        case e => println( e.getMessage )
+      }
     }
   }
 }
