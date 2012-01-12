@@ -5,9 +5,7 @@ import java.io.InputStreamReader
 
 class LookaheadStream( private var string: String ) {
 
-  def isEmpty = ! this.isNotEmpty
-
-  def isNotEmpty = string.length > 0
+  def isEmpty = string.length == 0
 
   def peek: Char =
     if ( this isEmpty )
@@ -16,11 +14,15 @@ class LookaheadStream( private var string: String ) {
       string.head
 
   def eat( c: Char ): Unit =
-    if ( c == peek )
+    if ( this.isEmpty )
+      throw new IllegalArgumentException( "Expected '" + c + "'" )
+    else if ( c == peek )
       string = string drop 1
     else
       throw new IllegalArgumentException(
           "Expected '" + c + "', got '" + peek + "'" )
+
+  def eat( s: String ): Unit = s.foreach( c => this eat c )
 
   def drop(): Char = {
     val c = peek
@@ -31,7 +33,7 @@ class LookaheadStream( private var string: String ) {
   def skip(): Unit = string = string drop 1
 
   def skipWhitespace(): Unit =
-      while ( this.isNotEmpty && peek.isWhitespace )
+      while ( ! this.isEmpty && peek.isWhitespace )
         skip()
 }
 
@@ -63,6 +65,7 @@ class APLInterpreter {
       case '\'' => println( readString() )
       case ':'  => runCommand()
       case '~' | Integer( _ ) => println( expression() )
+      case Uppercase( _ ) => assignment()
       case _    => unexpected()
     }
   }
@@ -140,8 +143,38 @@ class APLInterpreter {
       do {
         buffer = buffer + in.peek
         in.skip()
-      } while ( in.isNotEmpty && ( in.peek isDigit ) )
+      } while ( ! in.isEmpty && ( in.peek isDigit ) )
       buffer.toInt;
+    }
+  }
+
+  def assignment() = {
+    val name = readName()
+    in.skipWhitespace()
+    if ( in.isEmpty ) {
+      val value = env get name
+      if ( value == None )
+        error( "'" + name + "' has not been declared" )
+      else
+        println( ( env get name ) get )
+    } else {
+      in.eat( "<-" )
+      in.skipWhitespace()
+      env = env + ( name -> expression() )
+    }
+  }
+
+  def readName() = {
+    in.skipWhitespace()
+    if ( in.isEmpty || ( ! in.peek.isUpper ) )
+      error( "Expected identifier" )
+    else {
+      var buffer = ""
+      do {
+        buffer = buffer + in.peek
+        in.skip()
+      } while ( ! in.isEmpty && ( in.peek isUpper ) )
+      buffer
     }
   }
 }
