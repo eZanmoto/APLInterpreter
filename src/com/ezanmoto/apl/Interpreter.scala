@@ -1,6 +1,31 @@
 package com.ezanmoto.apl
 
-import java.io.InputStream
+import java.io.BufferedReader
+import java.io.InputStreamReader
+
+class MyString( string: String ) {
+
+  def eat( c: Char ) =
+    if ( string.head == c )
+      string drop 1
+    else
+      throw new IllegalArgumentException(
+          "Expected '" + c + "', got '" + string.head + "'" )
+
+  val skipWhitespace = this skipWS string
+
+  private def skipWS( s: String ): String =
+    if ( s.head == ' ' || s.head == '\t' )
+      this skipWS ( s drop 1 )
+    else
+      s
+}
+
+object String2MyString {
+  implicit def string2MyString( s: String ) = new MyString( s )
+}
+
+import String2MyString._
 
 object Character {
   def apply( c: Char ) = new Character( c )
@@ -11,64 +36,46 @@ object Integer {
   def unapply( c: Char ) = if ( c isDigit ) Some( c ) else None
 }
 
-class CharStream( stream: InputStream ) {
-
-  private var head: Option[Char] = None
-
-  def peek() = {
-    if ( None == head )
-      head = getNext
-    head get
-  }
-
-  private def getNext = Some( ( stream read ) toChar )
-
-  def eat( c: Char ): Unit =
-    if ( this.peek == c )
-      head = getNext
-    else
-      throw new IllegalArgumentException(
-        "Expected '" + c + "' but got '" + this.peek + "'" )
-
-  def clear(): Unit = {
-    while( stream.available > 0 )
-      getNext
-    head = None
-  }
-}
-
-class APLInterpreter( in: CharStream ) {
+class APLInterpreter {
 
   var isRunning = true
 
-  def read() = {
-    skipWhitespace()
-    ( in peek ) match {
-      case '\'' => readString()
-      case ':'  => readCommand()
-      case Integer( c ) => println( readInteger() )
-      case _    => error()
+  def evaluate( line: String ) = {
+    println( this read line )
+  }
+
+  def read( line: String): String = {
+    val in: String = line skipWhitespace
+    var r: String = ""
+    in.head match {
+      case '\'' => r = this readString in
+      case ':'  => r = this readCommand in
+      case _    => r = this unexpected in
     }
+    r
   }
 
-  def error() = {
-    in.clear()
-    println( "[!] Error" )
-  }
+  def unexpected( s: String ): String =
+    error( "Unexpected input, '" + s.head + "'" )
 
-  def readString() = {
-    in eat '\''
+  def error( message: String ): String = "[!] Error: " + message
+
+  def readString( in: String ): String = {
+    var line = in eat '\''
     var buffer = ""
-    var c = in.peek()
-    while ( c != '\'' ) {
-      buffer = buffer + c
-      in eat c
-      c = in.peek()
+    while ( line.length > 0 && line.head != '\'' ) {
+      buffer = buffer + line.head
+      line = line drop 1
     }
-    println( buffer )
-    in eat '\''
+    if ( line.length == 0 )
+      error( "Expected end of string" )
+    else {
+      line eat '\''
+      buffer
+    }
   }
 
+  /*
   def readInteger(): Int = {
     skipWhitespace()
     var buffer = ""
@@ -100,12 +107,13 @@ class APLInterpreter( in: CharStream ) {
       c = in.peek()
     }
   }
+  */
 
-  def readCommand() = {
-    in eat ':'
-    ( in peek ) match {
-      case 'q' => in eat 'q'; println( "Goodbye." ); isRunning = false
-      case _   => error()
+  def readCommand( line: String ): String = {
+    val in = line eat ':'
+    in.head match {
+      case 'q' => isRunning = false; "Goodbye."
+      case _   => this unexpected in
     }
   }
 }
@@ -115,13 +123,14 @@ object Interpreter {
   private var running = true
 
   def main( args: Array[String] ) = {
-    val stream = new CharStream( System.in )
-    val interpreter = new APLInterpreter( stream )
+    val reader = new InputStreamReader( System.in )
+    val in = new BufferedReader( reader )
+    val interpreter = new APLInterpreter
     println( "CLEAR WS" )
-    print( "      " )
     while ( interpreter isRunning ) {
-      interpreter.read()
       print( "      " )
+      val line = in.readLine()
+      interpreter.evaluate( line )
     }
   }
 }
