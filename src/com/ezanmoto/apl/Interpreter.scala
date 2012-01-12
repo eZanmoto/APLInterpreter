@@ -152,7 +152,11 @@ class APLInterpreter {
 
   def add( a: List[Int], b: Either[Int, List[Int]] ): List[Int] = b match {
     case Left( v ) => ( convert( a ) ) map ( add( v, _ ) )
-    case Right( v ) => ( a, convert( v ) ).zipped map ( add( _, _ ) )
+    case Right( v ) =>
+      if ( a.length == v.length )
+        ( a, convert( v ) ).zipped map ( add( _, _ ) )
+      else
+        error( "" + a + " cannot be added to " + v + ", mismatched lengths" )
   }
 
   def readListAfter( a: Int ): List[Int] = {
