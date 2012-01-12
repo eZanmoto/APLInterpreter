@@ -73,7 +73,11 @@ class APLInterpreter {
       error( "Trailing characters" )
   }
 
-  def unexpected() = error( "Unexpected '" + in.peek + "'" )
+  def unexpected() =
+    if ( in.isEmpty )
+      error( "Unexpected end of line" )
+    else
+      error( "Unexpected '" + in.peek + "'" )
 
   def readString(): String = {
     in eat '\''
@@ -96,14 +100,14 @@ class APLInterpreter {
       error( "Expected further input" )
     else
       in.peek match {
-        case 'q' => isRunning = false; println( "Goodbye." )
+        case 'q' => in eat 'q'; isRunning = false; println( "Goodbye." )
         case _   => unexpected()
       }
   }
 
   def expression(): Either[Int, List[Int]] = readValue() match {
     case Left( v )  => expression( v )
-    case Right( v ) => error( "Can't allow that" )
+    case Right( v ) => expression( v )
   }
 
   def expression( a: Int ): Either[Int, List[Int]] = {
@@ -114,7 +118,8 @@ class APLInterpreter {
       in.peek match {
         case '+' => in eat '+'; Left( add( a, readValue() ) )
         case '%' => in eat '%'; Left( div( a, readValue() ) )
-        case _   => Right( readList( a ) )
+        case Integer( _ ) => expression( readListAfter( a ) )
+        case _   => unexpected()
       }
   }
 
@@ -128,7 +133,29 @@ class APLInterpreter {
     case Right( v ) => error( "Can't divide int by list" )
   }
 
-  def readList( a: Int ): List[Int] = {
+  def expression( a: List[Int] ): Either[Int, List[Int]] = {
+    in.skipWhitespace()
+    if ( in.isEmpty )
+      Right( a )
+    else
+      in.peek match {
+        case '+' => in eat '+'; Right( add( a, readValue() ) )
+        case _   => unexpected()
+      }
+  }
+
+  /** I use this function in the overloaded add, sub, mul and div functions to
+    * convert the lists of Int to lists of Either[Int, Nothing] so that I can
+    * map over them using my previously defined add, sub, mul and div functions.
+    */
+  def convert( list: List[Int] ) = list map( Left( _ ) )
+
+  def add( a: List[Int], b: Either[Int, List[Int]] ): List[Int] = b match {
+    case Left( v ) => ( convert( a ) ) map ( add( v, _ ) )
+    case Right( v ) => ( a, convert( v ) ).zipped map ( add( _, _ ) )
+  }
+
+  def readListAfter( a: Int ): List[Int] = {
     in.skipWhitespace()
     if ( in.isEmpty )
       unexpected()
@@ -142,6 +169,21 @@ class APLInterpreter {
     }
   }
 
+  def readIntegerOrList(): Either[Int, List[Int]] = {
+    val a = readInteger()
+    in.skipWhitespace()
+    if ( in.isEmpty )
+      Left( a )
+    else {
+      var list = a :: Nil
+      while ( ! in.isEmpty && in.peek.isDigit ) {
+        list = list ::: List( readInteger() )
+        in.skipWhitespace()
+      }
+      if ( list.length > 1 ) Right( list ) else Left( list head ) 
+    }
+  }
+
   def readValue(): Either[Int, List[Int]] = {
     in.skipWhitespace()
     if ( in.isEmpty )
@@ -149,7 +191,7 @@ class APLInterpreter {
     else
       in.peek match {
         case Uppercase( _ ) => this valueOf readName()
-        case Integer( _ ) | '~' => Left( readInteger() )
+        case Integer( _ ) | '~' => readIntegerOrList()
         case _ => error( "Expected '~', identifier or integer" )
       }
   }
@@ -185,16 +227,16 @@ class APLInterpreter {
   def assignment() = {
     val name = readName()
     in.skipWhitespace()
-    if ( in.isEmpty ) {
+    if ( in.isEmpty ) { // Print value
       printEither( valueOf( name ) )
-    } else if ( in.peek == '<' ) {
+    } else if ( in.peek == '<' ) { // Assignment
       in.eat( "<-" )
       in.skipWhitespace()
       env = env + ( name -> expression() )
-    } else {
+    } else { // Start of expression
       valueOf( name ) match {
         case Left( v )  => printEither( expression( v ) )
-        case Right( v ) => error( "Not yet implemented" )
+        case Right( v ) => printEither( expression( v ) )
       }
     }
   }
