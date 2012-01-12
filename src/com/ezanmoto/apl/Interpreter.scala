@@ -46,7 +46,7 @@ class APLInterpreter( in: CharStream ) {
     ( in peek ) match {
       case '\'' => readString()
       case ':'  => readCommand()
-      case Integer( c ) => readInteger()
+      case Integer( c ) => println( readInteger() )
       case _    => error()
     }
   }
@@ -69,7 +69,8 @@ class APLInterpreter( in: CharStream ) {
     in eat '\''
   }
 
-  def readInteger() = {
+  def readInteger(): Int = {
+    skipWhitespace()
     var buffer = ""
     var c = in.peek()
     while ( c isDigit ) {
@@ -77,12 +78,24 @@ class APLInterpreter( in: CharStream ) {
       in eat c
       c = in.peek()
     }
-    println( buffer )
+    readExpression( buffer toInt )
+  }
+
+  def readExpression( a: Int ): Int = {
+    skipWhitespace()
+    ( in peek ) match {
+      case '+' => in eat '+'; a + readInteger()
+      case '-' => in eat '-'; a - readInteger()
+      case '*' => in eat '*'; a * readInteger()
+      case '%' => in eat '%'; a / readInteger()
+      case '\n' | '\r' => in.clear(); a
+      case _   => error(); 0
+    }
   }
 
   def skipWhitespace() = {
     var c = in.peek()
-    while ( c isWhitespace ) {
+    while ( c == ' ' || c == '\t' ) {
       in eat c
       c = in.peek()
     }
@@ -105,9 +118,10 @@ object Interpreter {
     val stream = new CharStream( System.in )
     val interpreter = new APLInterpreter( stream )
     println( "CLEAR WS" )
+    print( "      " )
     while ( interpreter isRunning ) {
-      print( "      " )
       interpreter.read()
+      print( "      " )
     }
   }
 }
