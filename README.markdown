@@ -45,6 +45,10 @@ Example Session
         L x 1 2 3 4
     List(1, 4, 9, 16)
 
+        L <- L x 1 2 3 4
+        L [ 3 ]
+    9
+
         :q
     Goodbye.
 
