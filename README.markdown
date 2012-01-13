@@ -34,6 +34,20 @@ Example Session
           1 2 3 4 + 1 2 3 4
     List(2, 4, 6, 8)
 
+        L <- 1 2
+        L <- L, 3 4
+        L
+    List(1, 2, 3, 4)
+
+        L x 2
+    List(2, 4, 6, 8)
+
+        L x 1 2 3 4
+    List(1, 4, 9, 16)
+
+        :q
+    Goodbye.
+
 About
 -----
 
