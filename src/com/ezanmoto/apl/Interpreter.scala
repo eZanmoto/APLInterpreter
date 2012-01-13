@@ -46,9 +46,119 @@ object Integer {
   def unapply( c: Char ) = if ( c isDigit ) Some( c ) else None
 }
 
+object Type extends Enumeration {
+  type Type = Value
+  val string, integer, list = Value
+}
+
+import com.ezanmoto.apl.Type._
+
+trait Variable {
+  /** Abstract */
+  def getType: Type
+  def +( v: Variable ): Variable
+  def -( v: Variable ): Variable
+  def *( v: Variable ): Variable
+  def /( v: Variable ): Variable
+  def ++( v: Variable ): Variable
+
+  /** Concrete */
+  def isString  = getType == string
+  def isInteger = getType == integer
+  def isList    = getType == list
+  def stringValue: String  = illegalCast( string  )
+  def integerValue: Int    = illegalCast( integer )
+  def listValue: List[Int] = illegalCast( list    )
+  def illegalCast( t: Type ) = throw new RuntimeException(
+    "Cannot cast from '" + getType + "' to '" + t + "'" )
+}
+
+object Variable {
+  def apply( s: String    ) = new StringVariable( s )
+  def apply( i: Int       ) = new IntegerVariable( i )
+  def apply( l: List[Int] ) = new ListVariable( l )
+}
+
+class StringVariable( private val string: String ) extends Variable {
+  val getType = Type.string
+  override def stringValue = string
+  def +( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
+  def -( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
+  def *( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
+  def /( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
+
+  def ++( v: Variable ) = v match {
+    case StringVariable( s ) => Variable( string + s )
+    case _ => throw new RuntimeException( "Not implemented yet" )
+  }
+
+  override def toString = string
+}
+
+object StringVariable {
+  def unapply( v: Variable ): Option[String] =
+    if ( v isString ) Some( v stringValue ) else None
+}
+
+class IntegerVariable( private val integer: Int ) extends Variable {
+  val getType = Type.integer
+  override def integerValue = integer
+
+  private def math( f: (Int, Int) => Int )( v: Variable ): Variable = v match {
+    case StringVariable( s )  => throw new RuntimeException( "Not implemented" )
+    case IntegerVariable( i ) => Variable( f( integer, i ) )
+    case ListVariable( l )    => Variable( l map ( f( integer, _ ) ) )
+  }
+  def +( v: Variable ) = math( _ + _ )( v )
+  def -( v: Variable ) = math( _ - _ )( v )
+  def *( v: Variable ) = math( _ * _ )( v )
+  def /( v: Variable ) = math( _ / _ )( v )
+
+  def ++( v: Variable ) = v match {
+    case StringVariable( _ )  => throw new RuntimeException( "Not implemented" )
+    case IntegerVariable( i ) => Variable( List( integer, i ) )
+    case ListVariable( l )    => Variable( integer :: l )
+  }
+
+  override def toString = integer toString
+}
+
+object IntegerVariable {
+  def unapply( v: Variable ): Option[Int] =
+    if ( v isInteger ) Some( v integerValue ) else None
+}
+
+class ListVariable( private val list: List[Int] ) extends Variable {
+  val getType = Type.list
+  override def listValue = list
+
+  private def math( f: (Int, Int) => Int )( v: Variable ): Variable = v match {
+    case StringVariable( s )  => throw new RuntimeException( "Not implemented" )
+    case IntegerVariable( i ) => Variable( list map ( f( i, _ ) ) )
+    case ListVariable( l ) => Variable( ( list, l ).zipped map ( f( _, _ ) ) )
+  }
+  def +( v: Variable ) = math( _ + _ )( v )
+  def -( v: Variable ) = math( _ - _ )( v )
+  def *( v: Variable ) = math( _ * _ )( v )
+  def /( v: Variable ) = math( _ / _ )( v )
+
+  def ++( v: Variable ) = v match {
+    case StringVariable( _ )  => throw new RuntimeException( "Not implemented" )
+    case IntegerVariable( i ) => Variable( list ::: List( i ) )
+    case ListVariable( l )    => Variable( list ::: l )
+  }
+
+  override def toString = list toString
+}
+
+object ListVariable {
+  def unapply( v: Variable ): Option[List[Int]] =
+    if ( v isList ) Some( v listValue ) else None
+}
+
 class APLInterpreter {
 
-  private var env = Map[String, Either[Int, List[Int]]]()
+  private var env = Map[String, Variable]()
 
   private var in: LookaheadStream = new LookaheadStream( "" )
 
@@ -62,9 +172,8 @@ class APLInterpreter {
   def interpret(): Unit = {
     in.skipWhitespace()
     in.peek match {
-      case '\'' => println( readString() )
+      case '\'' | '~' | Integer( _ ) => println( expression() )
       case ':'  => runCommand()
-      case '~' | Integer( _ ) => printEither( expression() )
       case Uppercase( _ ) => assignment()
       case _    => unexpected()
     }
@@ -105,58 +214,26 @@ class APLInterpreter {
       }
   }
 
-  def expression(): Either[Int, List[Int]] = readValue() match {
-    case Left( v )  => expression( v )
-    case Right( v ) => expression( v )
-  }
+  def expression(): Variable = expressionAfter( readValue() )
 
-  def expression( a: Int ): Either[Int, List[Int]] = {
+  def expressionAfter( a: Variable ): Variable = {
     in.skipWhitespace()
     if ( in.isEmpty )
-      Left( a )
+      a
     else
       in.peek match {
-        case '+' => in eat '+'; Left( add( a, readValue() ) )
-        case '%' => in eat '%'; Left( div( a, readValue() ) )
-        case Integer( _ ) => expression( readListAfter( a ) )
+        case '+' => in eat '+'; expressionAfter( a +  readValue() )
+        case '-' => in eat '-'; expressionAfter( a -  readValue() )
+        case 'x' => in eat 'x'; expressionAfter( a *  readValue() )
+        case '%' => in eat '%'; expressionAfter( a /  readValue() )
+        case ',' => in eat ','; expressionAfter( a ++ readValue() )
+        case Integer( _ ) =>
+          if ( a isInteger )
+            expressionAfter( Variable( readListAfter( a integerValue ) ) )
+          else
+            unexpected()
         case _   => unexpected()
       }
-  }
-
-  def add( a: Int, b: Either[Int, List[Int]] ): Int = b match {
-    case Left( v )  => a + v
-    case Right( v ) => error( "Can't add int to list" )
-  }
-
-  def div( a: Int, b: Either[Int, List[Int]] ): Int = b match {
-    case Left( v )  => if ( v == 0 ) error( "Can't divide by 0" ) else a / v
-    case Right( v ) => error( "Can't divide int by list" )
-  }
-
-  def expression( a: List[Int] ): Either[Int, List[Int]] = {
-    in.skipWhitespace()
-    if ( in.isEmpty )
-      Right( a )
-    else
-      in.peek match {
-        case '+' => in eat '+'; Right( add( a, readValue() ) )
-        case _   => unexpected()
-      }
-  }
-
-  /** I use this function in the overloaded add, sub, mul and div functions to
-    * convert the lists of Int to lists of Either[Int, Nothing] so that I can
-    * map over them using my previously defined add, sub, mul and div functions.
-    */
-  def convert( list: List[Int] ) = list map( Left( _ ) )
-
-  def add( a: List[Int], b: Either[Int, List[Int]] ): List[Int] = b match {
-    case Left( v ) => ( convert( a ) ) map ( add( v, _ ) )
-    case Right( v ) =>
-      if ( a.length == v.length )
-        ( a, convert( v ) ).zipped map ( add( _, _ ) )
-      else
-        error( "" + a + " cannot be added to " + v + ", mismatched lengths" )
   }
 
   def readListAfter( a: Int ): List[Int] = {
@@ -166,41 +243,42 @@ class APLInterpreter {
     else {
       var list = a :: Nil
       while ( ! in.isEmpty && in.peek.isDigit ) {
-        list = list ::: List( readInteger() )
+        list = list ::: List( readSignedInteger() )
         in.skipWhitespace()
       }
       list
     }
   }
 
-  def readIntegerOrList(): Either[Int, List[Int]] = {
-    val a = readInteger()
+  def readIntegerOrList(): Variable = {
+    val a = readSignedInteger()
     in.skipWhitespace()
     if ( in.isEmpty )
-      Left( a )
+      Variable( a )
     else {
       var list = a :: Nil
       while ( ! in.isEmpty && in.peek.isDigit ) {
-        list = list ::: List( readInteger() )
+        list = list ::: List( readSignedInteger() )
         in.skipWhitespace()
       }
-      if ( list.length > 1 ) Right( list ) else Left( list head ) 
+      if ( list.length > 1 ) Variable( list ) else Variable( list head ) 
     }
   }
 
-  def readValue(): Either[Int, List[Int]] = {
+  def readValue(): Variable = {
     in.skipWhitespace()
     if ( in.isEmpty )
       error( "Expected '~', identifier or integer" )
     else
       in.peek match {
-        case Uppercase( _ ) => this valueOf readName()
+        case '\'' => Variable( readString() )
+        case Uppercase( _ ) => lookup( readName() )
         case Integer( _ ) | '~' => readIntegerOrList()
-        case _ => error( "Expected '~', identifier or integer" )
+        case _ => error( "Expected '~', identifier, integer or string" )
       }
   }
 
-  def readInteger(): Int = {
+  def readSignedInteger(): Int = {
     in.skipWhitespace()
     if ( in.isEmpty )
       error( "Expected integer or '~'" )
@@ -210,11 +288,11 @@ class APLInterpreter {
         isNegative = true
         in eat '~'
       }
-      readNumber() * ( if ( isNegative ) -1 else 1 )
+      readInteger() * ( if ( isNegative ) -1 else 1 )
     }
   }
 
-  def readNumber(): Int = {
+  def readInteger(): Int = {
     in.skipWhitespace()
     if ( in.isEmpty || ! in.peek.isDigit )
       error( "Expected integer" )
@@ -228,37 +306,31 @@ class APLInterpreter {
     }
   }
 
-  def assignment() = {
+  def assignment(): Unit = {
     val name = readName()
     in.skipWhitespace()
     if ( in.isEmpty ) { // Print value
-      printEither( valueOf( name ) )
+      println( lookup( name ) )
     } else if ( in.peek == '<' ) { // Assignment
       in.eat( "<-" )
       in.skipWhitespace()
-      env = env + ( name -> expression() )
+      env = env + ( name -> readRHS() )
     } else { // Start of expression
-      valueOf( name ) match {
-        case Left( v )  => printEither( expression( v ) )
-        case Right( v ) => printEither( expression( v ) )
-      }
+      println( expressionAfter( lookup( name ) ) )
     }
   }
 
-  def printEither( e: Either[Int, List[Int]] ) = e match {
-    case Left( v )  => println( v )
-    case Right( v ) => println( v )
+  def readRHS(): Variable = in.peek match {
+    case '\'' => Variable( readString() )
+    case Uppercase( _ ) | '~' | Integer( _ ) => expression()
   }
 
-  def valueOf( name: String ): Either[Int, List[Int]] = {
-    val value = env get name
-    if ( value == None )
-      error( "'" + name + "' has not been declared" )
-    else
-      value.get
+  def lookup( name: String ): Variable = ( env get name ) match {
+    case None      => error( "'" + name + "' has not been declared" )
+    case Some( x ) => x
   }
 
-  def readName() = {
+  def readName(): String = {
     in.skipWhitespace()
     if ( in.isEmpty || ( ! in.peek.isUpper ) )
       error( "Expected identifier" )
