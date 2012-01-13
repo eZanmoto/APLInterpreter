@@ -227,6 +227,7 @@ class APLInterpreter {
         case 'x' => in eat 'x'; expressionAfter( a *  readValue() )
         case '%' => in eat '%'; expressionAfter( a /  readValue() )
         case ',' => in eat ','; expressionAfter( a ++ readValue() )
+        case '[' => expressionAfter( indexOf( readIndex(), a ) )
         case Integer( _ ) =>
           if ( a isInteger )
             expressionAfter( Variable( readListAfter( a integerValue ) ) )
@@ -234,6 +235,17 @@ class APLInterpreter {
             unexpected()
         case _   => unexpected()
       }
+  }
+
+  def readIndex(): Int = { in eat '['; val i = readInteger(); in eat ']'; i }
+
+  def indexOf( index: Int, a: Variable ): Variable = a match {
+    case ListVariable( list ) =>
+      if ( list isDefinedAt ( index - 1 ) )
+        Variable( list( index - 1 ) )
+      else
+        error( "index '" + index + "' out of range [1.." + list.length + "]" )
+    case v => error( "can't index '" + v + "' not a list" )
   }
 
   def readListAfter( a: Int ): List[Int] = {
