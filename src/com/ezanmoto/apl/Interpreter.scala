@@ -361,7 +361,14 @@ class APLInterpreter {
     else
       in.peek match {
         case '\'' => Variable( readString() )
-        case Uppercase( _ ) => lookup( readName() )
+        case Uppercase( _ ) => {
+          var value = lookup( readName() )
+          in.skipWhitespace()
+          if ( ! in.isEmpty && in.peek == '[' )
+            value at readIndex()
+          else
+            value
+        }
         case Integer( _ ) | '~' => readIntegerOrList()
         case _ => error( "Expected '~', identifier, integer or string" )
       }
