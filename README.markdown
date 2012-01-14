@@ -49,6 +49,15 @@ Example Session
         L [ 3 ]
     9
 
+        L [ 3 ] <- 25
+        L
+    List(1, 4, 25, 16)
+
+        S <- 'HI'
+        S [ 2 ] <- 'A'
+        S
+    HA
+
         :q
     Goodbye.
 

@@ -61,6 +61,9 @@ trait Variable {
   def *( v: Variable ): Variable
   def /( v: Variable ): Variable
   def ++( v: Variable ): Variable
+  def before( index: Variable ): Variable
+  def at( index: Variable ): Variable
+  def after( index: Variable ): Variable
 
   /** Concrete */
   def isString  = getType == string
@@ -92,6 +95,29 @@ class StringVariable( private val string: String ) extends Variable {
     case _ => throw new RuntimeException( "Not implemented yet" )
   }
 
+  private def get( f: ( Int => String ) )( index: Variable ): Variable =
+  index match {
+    case IntegerVariable( i ) =>
+      if ( i <= string.length )
+        Variable( f( i ) )
+      else
+        throw new RuntimeException( "'" + i + "' ! [1.." + string.length + "]" )
+    case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
+  }
+
+  def before( index: Variable ) = get( string substring ( 0, _ ) )( index )
+
+  def at( index: Variable ) = index match {
+    case IntegerVariable( i ) =>
+      if ( string isDefinedAt ( i - 1 ) )
+        Variable( String valueOf ( string charAt ( i - 1 ) ) )
+      else
+        throw new RuntimeException( "'" + i + "' ! [1.." + string.length + "]" )
+    case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
+  }
+
+  def after( index: Variable ) = get( i => string substring ( i + 1 ) )( index )
+
   override def toString = string
 }
 
@@ -120,6 +146,10 @@ class IntegerVariable( private val integer: Int ) extends Variable {
     case ListVariable( l )    => Variable( integer :: l )
   }
 
+  def before( index: Variable ) = throw new RuntimeException( "Can't index" )
+  def at( index: Variable ) = throw new RuntimeException( "Can't index int" )
+  def after( index: Variable ) = throw new RuntimeException( "Can't index int" )
+
   override def toString = integer toString
 }
 
@@ -147,6 +177,29 @@ class ListVariable( private val list: List[Int] ) extends Variable {
     case IntegerVariable( i ) => Variable( list ::: List( i ) )
     case ListVariable( l )    => Variable( list ::: l )
   }
+
+  private def get( f: ( Int => List[Int] ) )( index: Variable ): Variable =
+  index match {
+    case IntegerVariable( i ) =>
+      if ( i <= list.length )
+        Variable( f( i ) )
+      else
+        throw new RuntimeException( "'" + i + "' ! [1.." + list.length + "]" )
+    case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
+  }
+
+  def before( index: Variable ) = get( i => list take ( i - 1 ) )( index )
+
+  def at( index: Variable ) = index match {
+    case IntegerVariable( i ) =>
+      if ( list isDefinedAt ( i - 1 ) )
+        Variable( list( i - 1 ) )
+      else
+        throw new RuntimeException( "'" + i + "' ! [1.." + list.length + "]" )
+    case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
+  }
+
+  def after( index: Variable ) = get( list drop _ )( index )
 
   override def toString = list toString
 }
@@ -227,25 +280,22 @@ class APLInterpreter {
         case 'x' => in eat 'x'; expressionAfter( a *  readValue() )
         case '%' => in eat '%'; expressionAfter( a /  readValue() )
         case ',' => in eat ','; expressionAfter( a ++ readValue() )
-        case '[' => expressionAfter( indexOf( readIndex(), a ) )
+        case '[' => expressionAfter( a at readIndex() )
         case Integer( _ ) =>
           if ( a isInteger )
             expressionAfter( Variable( readListAfter( a integerValue ) ) )
           else
             unexpected()
-        case _   => unexpected()
+        case _   => a
       }
   }
 
-  def readIndex(): Int = { in eat '['; val i = readInteger(); in eat ']'; i }
-
-  def indexOf( index: Int, a: Variable ): Variable = a match {
-    case ListVariable( list ) =>
-      if ( list isDefinedAt ( index - 1 ) )
-        Variable( list( index - 1 ) )
-      else
-        error( "index '" + index + "' out of range [1.." + list.length + "]" )
-    case v => error( "can't index '" + v + "' not a list" )
+  def readIndex(): Variable = {
+    in eat '['
+    val i = expression()
+    in.skipWhitespace()
+    in eat ']'
+    i
   }
 
   def readListAfter( a: Int ): List[Int] = {
@@ -321,25 +371,57 @@ class APLInterpreter {
   def assignment(): Unit = {
     val name = readName()
     in.skipWhitespace()
+    val index =
+      if ( ! in.isEmpty && in.peek == '[' ) Some( readIndex() ) else None
+    in.skipWhitespace()
     if ( in.isEmpty ) { // Print value
-      println( lookup( name ) )
+      var value: Variable = lookup( name )
+      if ( None != index )
+        value = value at index.get
+      println( value )
     } else if ( in.peek == '<' ) { // Assignment
       in.eat( "<-" )
       in.skipWhitespace()
-      env = env + ( name -> readRHS() )
+      if ( index == None )
+        env = env + ( name -> readRHS() )
+      else if ( lookup( name ) isInteger )
+        error( "cannot index integer" )
+      else
+        env = env + ( name -> indexAssignment( lookup( name ), index get ) )
     } else { // Start of expression
-      println( expressionAfter( lookup( name ) ) )
+      var value: Variable = lookup( name )
+      if ( None != index )
+        value = value at index.get
+      println( expressionAfter( value ) )
     }
+  }
+
+  def indexAssignment( value: Variable, index: Variable ): Variable = {
+    val rhs = readRHS()
+    if ( ( value at index ).getType == rhs.getType ) {
+      rhs match {
+        case StringVariable( s ) =>
+          Variable( ( value before index ).stringValue + s
+                  + ( value after index ).stringValue )
+        case ListVariable( l ) => error( "Can't assign list to index" )
+        case IntegerVariable( i ) =>
+          Variable( ( value before index ).listValue
+                  ::: ( i :: ( value after index ).listValue ) )
+      }
+    } else
+      error( "'" + rhs.getType + "' cannot be assigned to variable of type '"
+           + value.getType + "'" )
   }
 
   def readRHS(): Variable = in.peek match {
     case '\'' => Variable( readString() )
     case Uppercase( _ ) | '~' | Integer( _ ) => expression()
+    case v => unexpected()
   }
 
   def lookup( name: String ): Variable = ( env get name ) match {
-    case None      => error( "'" + name + "' has not been declared" )
     case Some( x ) => x
+    case None      => error( "'" + name + "' has not been declared" )
   }
 
   def readName(): String = {
