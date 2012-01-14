@@ -60,9 +60,8 @@ trait Variable {
   def *( v: Variable ): Variable
   def /( v: Variable ): Variable
   def ++( v: Variable ): Variable
-  def before( index: Variable ): Variable
   def at( index: Variable ): Variable
-  def after( index: Variable ): Variable
+  def replace( index: Variable, value: Variable ): Variable
 
   /** Concrete */
   def isString  = getType == string
@@ -104,8 +103,6 @@ class APLString( private val string: String ) extends Variable {
     case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
   }
 
-  def before( index: Variable ) = get( string substring ( 0, _ ) )( index )
-
   def at( index: Variable ) = index match {
     case APLInteger( i ) =>
       if ( string isDefinedAt ( i - 1 ) )
@@ -115,7 +112,20 @@ class APLString( private val string: String ) extends Variable {
     case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
   }
 
-  def after( index: Variable ) = get( i => string substring ( i + 1 ) )( index )
+  def replace( index: Variable, value: Variable ) = index match {
+    case APLInteger( i ) => this.replace( i, value )
+    case APLList( l ) => throw new RuntimeException( "Not implemented yet" )
+    case v => throw new RuntimeException( "Can't use '" + v + "' as an index" )
+  }
+
+  private def replace( i: Int, value: Variable ) = value match {
+    case APLString( s ) =>
+      if ( i <= string.length ) {
+        Variable( string.substring( 0, i ) + s + string.substring( i + 1 ) )
+      } else
+        throw new RuntimeException( "'" + i + "' ! [1.." + string.length + "]" )
+    case v => throw new RuntimeException( "Can't replace chr with '" + v + "'" )
+  }
 
   override def toString = string
 }
@@ -145,9 +155,10 @@ class APLInteger( private val integer: Int ) extends Variable {
     case APLList( l )    => Variable( integer :: l )
   }
 
-  def before( index: Variable ) = throw new RuntimeException( "Can't index" )
   def at( index: Variable ) = throw new RuntimeException( "Can't index int" )
-  def after( index: Variable ) = throw new RuntimeException( "Can't index int" )
+
+  def replace( i: Variable, v: Variable ) =
+    throw new RuntimeException( "Can't index into int" )
 
   override def toString = integer toString
 }
@@ -177,28 +188,29 @@ class APLList( private val list: List[Int] ) extends Variable {
     case APLList( l )    => Variable( list ::: l )
   }
 
-  private def get( f: ( Int => List[Int] ) )( index: Variable ): Variable =
-  index match {
-    case APLInteger( i ) =>
-      if ( i <= list.length )
-        Variable( f( i ) )
-      else
-        throw new RuntimeException( "'" + i + "' ! [1.." + list.length + "]" )
-    case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
-  }
-
-  def before( index: Variable ) = get( i => list take ( i - 1 ) )( index )
-
   def at( index: Variable ) = index match {
     case APLInteger( i ) =>
       if ( list isDefinedAt ( i - 1 ) )
         Variable( list( i - 1 ) )
       else
         throw new RuntimeException( "'" + i + "' ! [1.." + list.length + "]" )
-    case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
+    case APLList( l ) => throw new RuntimeException( "Not implemented yet" ) case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
   }
 
-  def after( index: Variable ) = get( list drop _ )( index )
+  def replace( index: Variable, value: Variable ) = index match {
+    case APLInteger( i ) => this.replace( i, value )
+    case APLList( l ) => throw new RuntimeException( "Not implemented yet" )
+    case v => throw new RuntimeException( "Can't use '" + v + "' as an index" )
+  }
+
+  private def replace( i: Int, value: Variable ) = value match {
+    case APLInteger( v ) =>
+      if ( i <= list.length ) {
+        Variable( ( list take i ) ::: ( v :: ( list drop ( i + 1 ) ) ) )
+      } else
+        throw new RuntimeException( "'" + i + "' ! [1.." + list.length + "]" )
+    case v => throw new RuntimeException( "Can't replace int with '" + v + "'" )
+  }
 
   override def toString = list toString
 }
@@ -397,17 +409,9 @@ class APLInterpreter {
 
   def indexAssignment( value: Variable, index: Variable ): Variable = {
     val rhs = readRHS()
-    if ( ( value at index ).getType == rhs.getType ) {
-      rhs match {
-        case APLString( s ) =>
-          Variable( ( value before index ).stringValue + s
-                  + ( value after index ).stringValue )
-        case APLList( l ) => error( "Can't assign list to index" )
-        case APLInteger( i ) =>
-          Variable( ( value before index ).listValue
-                  ::: ( i :: ( value after index ).listValue ) )
-      }
-    } else
+    if ( ( value at index ).getType == rhs.getType )
+      value replace ( index, rhs )
+    else
       error( "'" + rhs.getType + "' cannot be assigned to variable of type '"
            + value.getType + "'" )
   }
