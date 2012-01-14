@@ -104,13 +104,21 @@ class APLString( private val string: String ) extends Variable {
   }
 
   def at( index: Variable ) = index match {
-    case APLInteger( i ) =>
-      if ( string isDefinedAt ( i - 1 ) )
-        Variable( String valueOf ( string charAt ( i - 1 ) ) )
-      else
-        throw new RuntimeException( "'" + i + "' ! [1.." + string.length + "]" )
+    case APLInteger( i ) => Variable( this at i )
+    case APLList( indices )    => {
+      var s = ""
+      for ( i <- indices )
+        s += this at i
+      Variable( s )
+    }
     case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
   }
+
+  private def at( i: Int ): String = 
+    if ( string isDefinedAt ( i - 1 ) )
+      String valueOf ( string charAt ( i - 1 ) )
+    else
+      throw new RuntimeException( "'" + i + "' ! [1.." + string.length + "]" )
 
   def replace( index: Variable, value: Variable ) = index match {
     case APLInteger( i ) => this.replace( i, value )
@@ -189,13 +197,21 @@ class APLList( private val list: List[Int] ) extends Variable {
   }
 
   def at( index: Variable ) = index match {
-    case APLInteger( i ) =>
+    case APLInteger( i ) => Variable( this at i )
+    case APLList( indices )    => {
+      var l: List[Int] = Nil
+      for ( i <- indices )
+        l = l ::: List( this at i )
+      Variable ( l )
+    }
+    case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
+  }
+
+  private def at( i: Int ): Int = 
       if ( list isDefinedAt ( i - 1 ) )
-        Variable( list( i - 1 ) )
+        list( i - 1 )
       else
         throw new RuntimeException( "'" + i + "' ! [1.." + list.length + "]" )
-    case APLList( l ) => throw new RuntimeException( "Not implemented yet" ) case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
-  }
 
   def replace( index: Variable, value: Variable ) = index match {
     case APLInteger( i ) => this.replace( i, value )

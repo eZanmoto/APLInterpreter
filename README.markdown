@@ -53,6 +53,18 @@ Example Session
         L
     List(1, 4, 25, 16)
 
+        L [ 1 + 3 ]
+    16
+
+        L [ 1 ] + L [ 3 ]
+    26
+
+        L [ 1 3 ]
+    List(1, 25)
+
+        L [ 3 1 ]
+    List(25, 1)
+
         S <- 'HI'
         S [ 2 ] <- 'A'
         S
