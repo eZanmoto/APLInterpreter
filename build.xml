@@ -34,7 +34,7 @@
     <target name="compile">
         <mkdir dir="${classes.dir}"/>
         <scalac srcdir="${production.src}" destdir="${classes.dir}"
-                classpathref="build.classpath"/>
+                classpathref="build.classpath" deprecation="on"/>
     </target>
 
     <target name="run" depends="compile">

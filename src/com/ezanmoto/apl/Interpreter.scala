@@ -38,7 +38,6 @@ class LookaheadStream( private var string: String ) {
 }
 
 object Uppercase {
-  def apply( c: Char ) = new Character( c )
   def unapply( c: Char ) = if ( c >= 'A' && c <= 'Z' ) Some( c ) else None
 }
 
