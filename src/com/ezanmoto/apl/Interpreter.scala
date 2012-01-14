@@ -76,12 +76,12 @@ trait Variable {
 }
 
 object Variable {
-  def apply( s: String    ) = new StringVariable( s )
-  def apply( i: Int       ) = new IntegerVariable( i )
-  def apply( l: List[Int] ) = new ListVariable( l )
+  def apply( s: String    ) = new APLString( s )
+  def apply( i: Int       ) = new APLInteger( i )
+  def apply( l: List[Int] ) = new APLList( l )
 }
 
-class StringVariable( private val string: String ) extends Variable {
+class APLString( private val string: String ) extends Variable {
   val getType = Type.string
   override def stringValue = string
   def +( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
@@ -90,13 +90,13 @@ class StringVariable( private val string: String ) extends Variable {
   def /( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
 
   def ++( v: Variable ) = v match {
-    case StringVariable( s ) => Variable( string + s )
+    case APLString( s ) => Variable( string + s )
     case _ => throw new RuntimeException( "Not implemented yet" )
   }
 
   private def get( f: ( Int => String ) )( index: Variable ): Variable =
   index match {
-    case IntegerVariable( i ) =>
+    case APLInteger( i ) =>
       if ( i <= string.length )
         Variable( f( i ) )
       else
@@ -107,7 +107,7 @@ class StringVariable( private val string: String ) extends Variable {
   def before( index: Variable ) = get( string substring ( 0, _ ) )( index )
 
   def at( index: Variable ) = index match {
-    case IntegerVariable( i ) =>
+    case APLInteger( i ) =>
       if ( string isDefinedAt ( i - 1 ) )
         Variable( String valueOf ( string charAt ( i - 1 ) ) )
       else
@@ -120,19 +120,19 @@ class StringVariable( private val string: String ) extends Variable {
   override def toString = string
 }
 
-object StringVariable {
+object APLString {
   def unapply( v: Variable ): Option[String] =
     if ( v isString ) Some( v stringValue ) else None
 }
 
-class IntegerVariable( private val integer: Int ) extends Variable {
+class APLInteger( private val integer: Int ) extends Variable {
   val getType = Type.integer
   override def integerValue = integer
 
   private def math( f: (Int, Int) => Int )( v: Variable ): Variable = v match {
-    case StringVariable( s )  => throw new RuntimeException( "Not implemented" )
-    case IntegerVariable( i ) => Variable( f( integer, i ) )
-    case ListVariable( l )    => Variable( l map ( f( integer, _ ) ) )
+    case APLString( s )  => throw new RuntimeException( "Not implemented" )
+    case APLInteger( i ) => Variable( f( integer, i ) )
+    case APLList( l )    => Variable( l map ( f( integer, _ ) ) )
   }
   def +( v: Variable ) = math( _ + _ )( v )
   def -( v: Variable ) = math( _ - _ )( v )
@@ -140,9 +140,9 @@ class IntegerVariable( private val integer: Int ) extends Variable {
   def /( v: Variable ) = math( _ / _ )( v )
 
   def ++( v: Variable ) = v match {
-    case StringVariable( _ )  => throw new RuntimeException( "Not implemented" )
-    case IntegerVariable( i ) => Variable( List( integer, i ) )
-    case ListVariable( l )    => Variable( integer :: l )
+    case APLString( _ )  => throw new RuntimeException( "Not implemented" )
+    case APLInteger( i ) => Variable( List( integer, i ) )
+    case APLList( l )    => Variable( integer :: l )
   }
 
   def before( index: Variable ) = throw new RuntimeException( "Can't index" )
@@ -152,19 +152,19 @@ class IntegerVariable( private val integer: Int ) extends Variable {
   override def toString = integer toString
 }
 
-object IntegerVariable {
+object APLInteger {
   def unapply( v: Variable ): Option[Int] =
     if ( v isInteger ) Some( v integerValue ) else None
 }
 
-class ListVariable( private val list: List[Int] ) extends Variable {
+class APLList( private val list: List[Int] ) extends Variable {
   val getType = Type.list
   override def listValue = list
 
   private def math( f: (Int, Int) => Int )( v: Variable ): Variable = v match {
-    case StringVariable( s )  => throw new RuntimeException( "Not implemented" )
-    case IntegerVariable( i ) => Variable( list map ( f( i, _ ) ) )
-    case ListVariable( l ) => Variable( ( list, l ).zipped map ( f( _, _ ) ) )
+    case APLString( s )  => throw new RuntimeException( "Not implemented" )
+    case APLInteger( i ) => Variable( list map ( f( i, _ ) ) )
+    case APLList( l ) => Variable( ( list, l ).zipped map ( f( _, _ ) ) )
   }
   def +( v: Variable ) = math( _ + _ )( v )
   def -( v: Variable ) = math( _ - _ )( v )
@@ -172,14 +172,14 @@ class ListVariable( private val list: List[Int] ) extends Variable {
   def /( v: Variable ) = math( _ / _ )( v )
 
   def ++( v: Variable ) = v match {
-    case StringVariable( _ )  => throw new RuntimeException( "Not implemented" )
-    case IntegerVariable( i ) => Variable( list ::: List( i ) )
-    case ListVariable( l )    => Variable( list ::: l )
+    case APLString( _ )  => throw new RuntimeException( "Not implemented" )
+    case APLInteger( i ) => Variable( list ::: List( i ) )
+    case APLList( l )    => Variable( list ::: l )
   }
 
   private def get( f: ( Int => List[Int] ) )( index: Variable ): Variable =
   index match {
-    case IntegerVariable( i ) =>
+    case APLInteger( i ) =>
       if ( i <= list.length )
         Variable( f( i ) )
       else
@@ -190,7 +190,7 @@ class ListVariable( private val list: List[Int] ) extends Variable {
   def before( index: Variable ) = get( i => list take ( i - 1 ) )( index )
 
   def at( index: Variable ) = index match {
-    case IntegerVariable( i ) =>
+    case APLInteger( i ) =>
       if ( list isDefinedAt ( i - 1 ) )
         Variable( list( i - 1 ) )
       else
@@ -203,7 +203,7 @@ class ListVariable( private val list: List[Int] ) extends Variable {
   override def toString = list toString
 }
 
-object ListVariable {
+object APLList {
   def unapply( v: Variable ): Option[List[Int]] =
     if ( v isList ) Some( v listValue ) else None
 }
@@ -399,11 +399,11 @@ class APLInterpreter {
     val rhs = readRHS()
     if ( ( value at index ).getType == rhs.getType ) {
       rhs match {
-        case StringVariable( s ) =>
+        case APLString( s ) =>
           Variable( ( value before index ).stringValue + s
                   + ( value after index ).stringValue )
-        case ListVariable( l ) => error( "Can't assign list to index" )
-        case IntegerVariable( i ) =>
+        case APLList( l ) => error( "Can't assign list to index" )
+        case APLInteger( i ) =>
           Variable( ( value before index ).listValue
                   ::: ( i :: ( value after index ).listValue ) )
       }
