@@ -39,7 +39,7 @@ class APLString( private val string: String ) extends Variable {
     case v => throw new RuntimeException( "can't use '" + v + "' as an index" )
   }
 
-  private def at( i: Int ): String = 
+  private def at( i: Int ): String =
     if ( string isDefinedAt ( i - 1 ) )
       String valueOf ( string charAt ( i - 1 ) )
     else
@@ -53,9 +53,9 @@ class APLString( private val string: String ) extends Variable {
 
   private def replace( i: Int, value: Variable ) = value match {
     case APLString( s ) =>
-      if ( i <= string.length ) {
-        Variable( string.substring( 0, i ) + s + string.substring( i + 1 ) )
-      } else
+      if ( i > 0 && i <= string.length )
+        Variable( string.substring( 0, i - 1 ) + s + string.substring( i ) )
+      else
         throw new RuntimeException( "'" + i + "' ! [1.." + string.length + "]" )
     case v => throw new RuntimeException( "Can't replace chr with '" + v + "'" )
   }

@@ -196,13 +196,13 @@ class APLInterpreter {
     }
   }
 
-  def indexAssignment( value: Variable, index: Variable ): Variable = {
+  def indexAssignment( lhs: Variable, index: Variable ): Variable = {
     val rhs = readRHS()
-    if ( ( value at index ).getType == rhs.getType )
-      value replace ( index, rhs )
+    if ( ( lhs at index ).getType == rhs.getType )
+      lhs replace ( index, rhs )
     else
       error( "'" + rhs.getType + "' cannot be assigned to variable of type '"
-           + value.getType + "'" )
+           + lhs.getType + "'" )
   }
 
   def readRHS(): Variable = in.peek match {
