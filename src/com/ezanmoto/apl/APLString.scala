@@ -83,6 +83,38 @@ class APLString( private val string: String ) extends Variable {
     case v => throw new RuntimeException( "Can't replace chr with '" + v + "'" )
   }
 
+  def eq( v: Variable ) = relation( _ == _, v )
+
+  // Nastiness personified in a function
+  // This is just a project, don't feel too bad, you can clean it up later
+  private def relation( f: ( (Char, Char) => Boolean ), v: Variable ) =
+    relation_( ( a, b ) => if ( f( a, b ) ) 1 else 0, v )
+
+  private def relation_( f: ( (Char, Char) => Int ), v: Variable ): Variable =
+  v match {
+    case APLString( characters ) =>
+      if ( string.length == 1 && characters.length == 1 )
+        Variable( f( string charAt 0, characters charAt 0 ) )
+      if ( characters.length == 1 ) {
+        val char = characters charAt 0
+        var result: List[Int] = Nil
+        for ( c <- stringValue )
+          result = result ::: List( f( c, char ) )
+        Variable( result )
+      } else if ( string.length == 1 ) {
+        // TODO ensure this is what is meant to happen
+        new APLString( characters ) relation_( f, this )
+      } else if ( string.length == characters.length ) {
+        var result: List[Int] = Nil
+        for ( i <- 0 to string.length - 1 )
+          result = result ::: List( f( string charAt i, characters charAt i ) )
+        Variable( result )
+      } else
+        throw new RuntimeException( "Number of indices does not match number "
+                                  + "of replacements" )
+    case v => throw new RuntimeException( "Can't compare chr with '" + v + "'" )
+  }
+
   override def toString = string
 }
 

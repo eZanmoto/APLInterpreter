@@ -74,6 +74,14 @@ class APLInterpreter {
         case '%' => in eat '%'; expressionAfter( a /  readValue() )
         case ',' => in eat ','; expressionAfter( a ++ readValue() )
         case '[' => expressionAfter( a at readIndex() )
+        case '=' => in eat '='; expressionAfter( a eq readValue() )
+        /*
+        case 'n' => in eat 'n'; expressionAfter( a ne readValue() )
+        case '<' => in eat '<'; expressionAfter( a lt readValue() )
+        case 'l' => in eat 'l'; expressionAfter( a le readValue() )
+        case '>' => in eat '>'; expressionAfter( a gt readValue() )
+        case 'g' => in eat 'g'; expressionAfter( a ge readValue() )
+        */
         case Integer( _ ) =>
           if ( a isInteger )
             expressionAfter( Variable( readListAfter( a integerValue ) ) )

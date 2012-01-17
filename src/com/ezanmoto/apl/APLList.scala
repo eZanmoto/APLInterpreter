@@ -76,5 +76,10 @@ class APLList( private val list: List[Int] ) extends Variable {
                                   + "of replacements" )
   }
 
-  override def toString = list toString
+  override def toString = {
+    var string = String valueOf list.head
+    for ( e <- list drop 1 )
+      string += " " + e
+    string
+  }
 }

@@ -80,6 +80,18 @@ Example Session
         I
     List(4, 2, 3, 1)
 
+        S = 'HIKE'
+    0 0 1 1
+
+        S = 'A'
+    0 1 0 0
+
+        'A' = S
+    0 1 0 0
+
+        S = S
+    1 1 1 1
+
         :q
     Goodbye.
 

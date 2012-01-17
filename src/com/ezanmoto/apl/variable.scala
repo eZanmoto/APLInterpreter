@@ -10,6 +10,14 @@ trait Variable {
   def *( v: Variable ): Variable
   def /( v: Variable ): Variable
   def ++( v: Variable ): Variable
+  def eq( v: Variable ): Variable = throw new RuntimeException( "Not implemented..." )
+  /*
+  def ne( v: Variable ): Variable
+  def lt( v: Variable ): Variable
+  def le( v: Variable ): Variable
+  def gt( v: Variable ): Variable
+  def ge( v: Variable ): Variable
+  */
   def at( index: Variable ): Variable
   def replace( index: Variable, value: Variable ): Variable
 
