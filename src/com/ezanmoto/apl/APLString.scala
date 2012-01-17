@@ -66,15 +66,14 @@ class APLString( private val string: String ) extends Variable {
     case APLString( characters ) =>
       if ( characters.length == 1 ) {
         // TODO ensure this is the correct behaviour
-        var c = Variable( characters )
         var result = this
         for ( i <- indices )
-          result = result replace( i, c )
+          result = result replace( i, value )
         result
       } else if ( indices.length == characters.length ) {
         var result = this
         for ( i <- 0 to ( indices.length - 1 ) ) {
-          var c = Variable( characters substring ( i, i + 1 ) )
+          val c = Variable( characters substring ( i, i + 1 ) )
           result = result replace( indices( i ), c )
         }
         result

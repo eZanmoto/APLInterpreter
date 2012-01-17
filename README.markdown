@@ -70,6 +70,16 @@ Example Session
         S
     HA
 
+        S <- 'BAKA'
+        S [ 1 4 ] <- 'CE'
+        S
+    CAKE
+
+        I <- 1 2 3 4
+        I [ 4 1 ] <- I [ 1 4 ]
+        I
+    List(4, 2, 3, 1)
+
         :q
     Goodbye.
 

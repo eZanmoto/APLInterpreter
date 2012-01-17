@@ -44,17 +44,36 @@ class APLList( private val list: List[Int] ) extends Variable {
 
   def replace( index: Variable, value: Variable ) = index match {
     case APLInteger( i ) => this.replace( i, value )
-    case APLList( l ) => throw new RuntimeException( "Not implemented yet" )
+    case APLList( l ) => this.replace( l, value )
     case v => throw new RuntimeException( "Can't use '" + v + "' as an index" )
   }
 
-  private def replace( i: Int, value: Variable ) = value match {
+  private def replace( i: Int, value: Variable ): APLList = value match {
     case APLInteger( v ) =>
-      if ( i <= list.length ) {
-        Variable( ( list take i ) ::: ( v :: ( list drop ( i + 1 ) ) ) )
+      if ( i > 0 && i <= list.length ) {
+        Variable( ( list take ( i - 1 ) ) ::: ( v :: ( list drop i ) ) )
       } else
         throw new RuntimeException( "'" + i + "' ! [1.." + list.length + "]" )
     case v => throw new RuntimeException( "Can't replace int with '" + v + "'" )
+  }
+
+  private def replace( indices: List[Int], value: Variable ): APLList =
+  value match {
+    case APLInteger( v ) => {
+      var result = this
+      for ( index <- indices )
+        result = result replace ( index, value )
+      result
+    }
+    case APLList( l ) =>
+      if ( indices.length == l.length ) {
+        var result = this
+        for ( i <- 0 to ( indices.length - 1 ) )
+          result = result replace( indices( i ), Variable( l( i ) ) )
+        result
+      } else
+        throw new RuntimeException( "Number of indices does not match number "
+                                  + "of replacements" )
   }
 
   override def toString = list toString
