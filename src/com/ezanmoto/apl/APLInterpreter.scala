@@ -74,14 +74,12 @@ class APLInterpreter {
         case '%' => in eat '%'; expressionAfter( a /  readValue() )
         case ',' => in eat ','; expressionAfter( a ++ readValue() )
         case '[' => expressionAfter( a at readIndex() )
-        case '=' => in eat '='; expressionAfter( a eq readValue() )
-        /*
-        case 'n' => in eat 'n'; expressionAfter( a ne readValue() )
-        case '<' => in eat '<'; expressionAfter( a lt readValue() )
-        case 'l' => in eat 'l'; expressionAfter( a le readValue() )
-        case '>' => in eat '>'; expressionAfter( a gt readValue() )
-        case 'g' => in eat 'g'; expressionAfter( a ge readValue() )
-        */
+        case '=' => in eat '='; expressionAfter( a == readValue() )
+        case 'n' => in eat 'n'; expressionAfter( a != readValue() )
+        case '<' => in eat '<'; expressionAfter( a <  readValue() )
+        case 'l' => in eat 'l'; expressionAfter( a <= readValue() )
+        case '>' => in eat '>'; expressionAfter( a >  readValue() )
+        case 'g' => in eat 'g'; expressionAfter( a >= readValue() )
         case Integer( _ ) =>
           if ( a isInteger )
             expressionAfter( Variable( readListAfter( a integerValue ) ) )
@@ -187,8 +185,8 @@ class APLInterpreter {
       if ( None != index )
         value = value at index.get
       println( value )
-    } else if ( in.peek == '<' ) { // Assignment
-      in.eat( "<-" )
+    } else if ( in.peek == ':' ) { // Assignment
+      in.eat( ':' )
       in.skipWhitespace()
       if ( index == None )
         env = env + ( name -> readRHS() )

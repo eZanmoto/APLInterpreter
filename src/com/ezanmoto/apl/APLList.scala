@@ -11,7 +11,7 @@ class APLList( private val list: List[Int] ) extends Variable {
 
   private def math( f: (Int, Int) => Int )( v: Variable ): Variable = v match {
     case APLString( s )  => throw new RuntimeException( "Not implemented" )
-    case APLInteger( i ) => Variable( list map ( f( i, _ ) ) )
+    case APLInteger( i ) => Variable( list map ( f( _, i ) ) )
     case APLList( l ) => Variable( ( list, l ).zipped map ( f( _, _ ) ) )
   }
   def +( v: Variable ) = math( _ + _ )( v )
@@ -74,6 +74,49 @@ class APLList( private val list: List[Int] ) extends Variable {
       } else
         throw new RuntimeException( "Number of indices does not match number "
                                   + "of replacements" )
+  }
+
+  def ==( v: Variable ) = relation( _ == _, v )
+  def !=( v: Variable ) = relation( _ != _, v )
+  def < ( v: Variable ) = relation( _ <  _, v )
+  def <=( v: Variable ) = relation( _ <= _, v )
+  def > ( v: Variable ) = relation( _ >  _, v )
+  def >=( v: Variable ) = relation( _ >= _, v )
+
+  // Nastiness personified in a function
+  // This is just a project, don't feel too bad, you can clean it up later
+  private def relation( f: ( (Int, Int) => Boolean ), v: Variable ) =
+    relation_( ( a, b ) => if ( f( a, b ) ) 1 else 0, v )
+
+  private def relation_( f: ( (Int, Int) => Int ), v: Variable ): Variable =
+  v match {
+    case APLInteger( i ) => {
+      var result: List[Int] = Nil
+      for ( l <- listValue )
+        result = result ::: List( f( l, i ) )
+      Variable( result )
+    }
+    case APLList( xs ) =>
+      if ( list.length == 1 && xs.length == 1 )
+        Variable( f( list head, xs head ) )
+      if ( xs.length == 1 ) {
+        val x = xs head
+        var result: List[Int] = Nil
+        for ( l <- listValue )
+          result = result ::: List( f( l, x ) )
+        Variable( result )
+      } else if ( list.length == 1 ) {
+        // TODO ensure this is what is meant to happen
+        new APLList( xs ) relation_( f, this )
+      } else if ( list.length == xs.length ) {
+        var result: List[Int] = Nil
+        for ( i <- 0 to ( xs.length - 1 ) )
+          result = result ::: List( f( list( i ), xs( i ) ) )
+        Variable( result )
+      } else
+        throw new RuntimeException( "Number of indices does not match number "
+                                  + "of replacements" )
+    case v => throw new RuntimeException( "Can't compare chr with '" + v + "'" )
   }
 
   override def toString = {

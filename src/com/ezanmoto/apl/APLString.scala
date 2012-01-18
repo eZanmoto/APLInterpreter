@@ -83,7 +83,12 @@ class APLString( private val string: String ) extends Variable {
     case v => throw new RuntimeException( "Can't replace chr with '" + v + "'" )
   }
 
-  def eq( v: Variable ) = relation( _ == _, v )
+  def ==( v: Variable ) = relation( _ == _, v )
+  def !=( v: Variable ) = relation( _ != _, v )
+  def < ( v: Variable ) = relation( _ <  _, v )
+  def <=( v: Variable ) = relation( _ <= _, v )
+  def > ( v: Variable ) = relation( _ >  _, v )
+  def >=( v: Variable ) = relation( _ >= _, v )
 
   // Nastiness personified in a function
   // This is just a project, don't feel too bad, you can clean it up later

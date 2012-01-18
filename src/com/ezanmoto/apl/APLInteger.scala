@@ -30,5 +30,18 @@ class APLInteger( private val integer: Int ) extends Variable {
   def replace( i: Variable, v: Variable ) =
     throw new RuntimeException( "Can't index into int" )
 
+  def ==( v: Variable ) = if ( v isList ) v == this else relation( _ == _, v )
+  def !=( v: Variable ) = if ( v isList ) v == this else relation( _ != _, v )
+  def < ( v: Variable ) = if ( v isList ) v == this else relation( _ <  _, v )
+  def <=( v: Variable ) = if ( v isList ) v == this else relation( _ <= _, v )
+  def > ( v: Variable ) = if ( v isList ) v == this else relation( _ >  _, v )
+  def >=( v: Variable ) = if ( v isList ) v == this else relation( _ >= _, v )
+
+  private def relation( f: ( (Int, Int) => Boolean ), v: Variable ) = v match {
+    case APLInteger( i ) => Variable( if ( f( integer, i ) ) 1 else 0 )
+    case v =>
+      throw new RuntimeException( "Cannot compare integer to '" + v + "'" )
+  }
+
   override def toString = integer toString
 }
