@@ -116,8 +116,17 @@ class APLList( private val list: List[Int] ) extends Variable {
       } else
         throw new RuntimeException( "Number of indices does not match number "
                                   + "of replacements" )
-    case v => throw new RuntimeException( "Can't compare chr with '" + v + "'" )
+    case v => throw new RuntimeException( "Can't compare int with '" + v + "'" )
   }
+
+  private def best( f: (Int, Int) => Int, v: Variable ) = v match {
+    case APLInteger( i ) => Variable( list.map( a => f( a, i ) ) )
+    case APLList( l ) => Variable( ( list, l ).zipped map f )
+    case v => throw new RuntimeException( "Can't compare int with '" + v + "'" )
+  }
+
+  def max( v: Variable ) = best( ( a, b ) => if ( a > b ) a else b, v )
+  def min( v: Variable ) = best( ( a, b ) => if ( a < b ) a else b, v )
 
   override def toString = {
     var string = String valueOf list.head

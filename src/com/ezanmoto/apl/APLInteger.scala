@@ -43,5 +43,22 @@ class APLInteger( private val integer: Int ) extends Variable {
       throw new RuntimeException( "Cannot compare integer to '" + v + "'" )
   }
 
+  private def best( f: (Int, Int) => Int, v: Variable ) = v match {
+    case APLInteger( i ) => Variable( f( integer, i ) )
+    case v => throw new RuntimeException( "Can't compare int with '" + v + "'" )
+  }
+
+  def max( v: Variable ) =
+    if ( v isList )
+      v max this
+    else
+      best( ( a, b ) => if ( a > b ) a else b, v )
+
+  def min( v: Variable ) =
+    if ( v isList )
+      v min this
+    else
+      best( ( a, b ) => if ( a < b ) a else b, v )
+
   override def toString = integer toString
 }

@@ -112,6 +112,12 @@ Example Session
         L g 3
     0 0 1 1 1
 
+        L r 3
+    3 3 3 4 5
+
+        L _ 3
+    1 2 3 3 3
+
         :q
     Goodbye.
 

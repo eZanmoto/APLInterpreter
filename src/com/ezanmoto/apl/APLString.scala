@@ -120,6 +120,9 @@ class APLString( private val string: String ) extends Variable {
     case v => throw new RuntimeException( "Can't compare chr with '" + v + "'" )
   }
 
+  def max( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
+  def min( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
+
   override def toString = string
 }
 

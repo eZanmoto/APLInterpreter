@@ -80,6 +80,8 @@ class APLInterpreter {
         case 'l' => in eat 'l'; expressionAfter( a <= readValue() )
         case '>' => in eat '>'; expressionAfter( a >  readValue() )
         case 'g' => in eat 'g'; expressionAfter( a >= readValue() )
+        case 'r' => in eat 'r'; expressionAfter( a max readValue() )
+        case '_' => in eat '_'; expressionAfter( a min readValue() )
         case Integer( _ ) =>
           if ( a isInteger )
             expressionAfter( Variable( readListAfter( a integerValue ) ) )
