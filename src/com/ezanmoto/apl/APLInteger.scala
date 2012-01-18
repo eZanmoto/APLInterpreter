@@ -10,14 +10,15 @@ class APLInteger( private val integer: Int ) extends Variable {
   override def integerValue = integer
 
   private def math( f: (Int, Int) => Int )( v: Variable ): Variable = v match {
-    case APLString( s )  => throw new RuntimeException( "Not implemented" )
     case APLInteger( i ) => Variable( f( integer, i ) )
-    case APLList( l )    => Variable( l map ( f( integer, _ ) ) )
+    case v => throw new RuntimeException( "Not implemented" )
   }
-  def +( v: Variable ) = math( _ + _ )( v )
-  def -( v: Variable ) = math( _ - _ )( v )
-  def *( v: Variable ) = math( _ * _ )( v )
-  def /( v: Variable ) = math( _ / _ )( v )
+
+  def +( v: Variable ) = if ( v isList ) v + this else math( _ + _ )( v )
+  def -( v: Variable ) = if ( v isList ) v - this else math( _ - _ )( v )
+  def *( v: Variable ) = if ( v isList ) v * this else math( _ * _ )( v )
+  def /( v: Variable ) = if ( v isList ) v / this else math( _ / _ )( v )
+  def %( v: Variable ) = if ( v isList ) v % this else math( _ % _ )( v )
 
   def ++( v: Variable ) = v match {
     case APLString( _ )  => throw new RuntimeException( "Not implemented" )

@@ -12,6 +12,7 @@ class APLString( private val string: String ) extends Variable {
   def -( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
   def *( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
   def /( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
+  def %( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
 
   def ++( v: Variable ) = v match {
     case APLString( s ) => Variable( string + s )

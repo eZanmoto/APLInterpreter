@@ -18,6 +18,7 @@ class APLList( private val list: List[Int] ) extends Variable {
   def -( v: Variable ) = math( _ - _ )( v )
   def *( v: Variable ) = math( _ * _ )( v )
   def /( v: Variable ) = math( _ / _ )( v )
+  def %( v: Variable ) = math( _ % _ )( v )
 
   def ++( v: Variable ) = v match {
     case APLString( _ )  => throw new RuntimeException( "Not implemented" )

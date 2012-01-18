@@ -72,6 +72,7 @@ class APLInterpreter {
         case '-' => in eat '-'; expressionAfter( a -  readValue() )
         case 'x' => in eat 'x'; expressionAfter( a *  readValue() )
         case '%' => in eat '%'; expressionAfter( a /  readValue() )
+        case '|' => in eat '|'; expressionAfter( a %  readValue() )
         case ',' => in eat ','; expressionAfter( a ++ readValue() )
         case '[' => expressionAfter( a at readIndex() )
         case '=' => in eat '='; expressionAfter( a == readValue() )

@@ -9,6 +9,7 @@ trait Variable {
   def -( v: Variable ): Variable
   def *( v: Variable ): Variable
   def /( v: Variable ): Variable
+  def %( v: Variable ): Variable
   def ++( v: Variable ): Variable
 
   def ==( v: Variable ): Variable
