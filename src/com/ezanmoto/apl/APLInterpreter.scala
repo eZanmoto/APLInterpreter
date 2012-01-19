@@ -18,7 +18,7 @@ class APLInterpreter {
   def interpret(): Unit = {
     in.skipWhitespace()
     in.peek match {
-      case '\'' | '~' | Integer( _ ) => println( expression() )
+      case '\'' | '~' | Integer( _ ) | 'i' => println( expression() )
       case ':'  => runCommand()
       case Uppercase( _ ) => assignment()
       case _    => unexpected()
@@ -83,11 +83,12 @@ class APLInterpreter {
         case 'g' => in eat 'g'; expressionAfter( a >= readValue() )
         case 'r' => in eat 'r'; expressionAfter( a max readValue() )
         case '_' => in eat '_'; expressionAfter( a min readValue() )
-        case Integer( _ ) =>
-          if ( a isInteger )
+        case Integer( _ ) | '~' =>
+          if ( a.isInteger )
             expressionAfter( Variable( readListAfter( a integerValue ) ) )
-          else
+          else {
             unexpected()
+          }
         case _   => a
       }
   }
@@ -145,6 +146,7 @@ class APLInterpreter {
             value
         }
         case Integer( _ ) | '~' => readIntegerOrList()
+        case 'i' => interval()
         case _ => error( "Expected '~', identifier, integer or string" )
       }
   }
@@ -165,8 +167,10 @@ class APLInterpreter {
 
   def readInteger(): Int = {
     in.skipWhitespace()
-    if ( in.isEmpty || ! in.peek.isDigit )
-      error( "Expected integer" )
+    if ( in.isEmpty )
+      error( "Expected further input" )
+    else if ( ! in.peek.isDigit )
+      error( "Expected integer, got '" + in.peek + "'" )
     else {
       var buffer = ""
       do {
@@ -203,6 +207,19 @@ class APLInterpreter {
         value = value at index.get
       println( expressionAfter( value ) )
     }
+  }
+
+  def interval(): Variable = {
+    in.skipWhitespace()
+    if ( in.peek == 'i' ) {
+      in eat 'i'
+      in.skipWhitespace()
+      var l: List[Int] = Nil
+      for ( i <- 1 to readInteger() )
+        l = l ::: List( i )
+      Variable( l )
+    } else
+      unexpected()
   }
 
   def indexAssignment( lhs: Variable, index: Variable ): Variable =
