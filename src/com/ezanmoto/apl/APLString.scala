@@ -124,6 +124,7 @@ class APLString( private val string: String ) extends Variable {
   def max( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
   def min( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
 
+  val length = string.length
+
   override def toString = string
 }
-

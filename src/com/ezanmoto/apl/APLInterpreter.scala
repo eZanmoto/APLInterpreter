@@ -18,7 +18,7 @@ class APLInterpreter {
   def interpret(): Unit = {
     in.skipWhitespace()
     in.peek match {
-      case '\'' | '~' | Integer( _ ) | 'i' => println( expression() )
+      case '\'' | '~' | Integer( _ ) | 'i' | 'p' => println( expression() )
       case ':'  => runCommand()
       case Uppercase( _ ) => assignment()
       case _    => unexpected()
@@ -147,6 +147,7 @@ class APLInterpreter {
         }
         case Integer( _ ) | '~' => readIntegerOrList()
         case 'i' => interval()
+        case 'p' => length()
         case _ => error( "Expected '~', identifier, integer or string" )
       }
   }
@@ -209,8 +210,7 @@ class APLInterpreter {
     }
   }
 
-  def interval(): Variable = {
-    in.skipWhitespace()
+  def interval(): Variable =
     if ( in.peek == 'i' ) {
       in eat 'i'
       in.skipWhitespace()
@@ -220,6 +220,11 @@ class APLInterpreter {
       Variable( l )
     } else
       unexpected()
+
+  def length(): Variable = {
+    in eat 'p'
+    in.skipWhitespace()
+    Variable( readValue() length )
   }
 
   def indexAssignment( lhs: Variable, index: Variable ): Variable =

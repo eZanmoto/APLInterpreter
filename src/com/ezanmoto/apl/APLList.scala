@@ -129,6 +129,8 @@ class APLList( private val list: List[Int] ) extends Variable {
   def max( v: Variable ) = best( ( a, b ) => if ( a > b ) a else b, v )
   def min( v: Variable ) = best( ( a, b ) => if ( a < b ) a else b, v )
 
+  val length = list length
+
   override def toString = {
     var string = String valueOf list.head
     for ( e <- list drop 1 )

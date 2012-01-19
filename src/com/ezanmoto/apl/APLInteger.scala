@@ -61,5 +61,7 @@ class APLInteger( private val integer: Int ) extends Variable {
     else
       best( ( a, b ) => if ( a < b ) a else b, v )
 
-  override def toString = integer toString
+  def length = throw new RuntimeException( "Can't get length of integer" )
+
+  override val toString = integer toString
 }

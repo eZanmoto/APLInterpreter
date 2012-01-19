@@ -22,6 +22,8 @@ trait Variable {
   def max( v: Variable ): Variable
   def min( v: Variable ): Variable
 
+  def length: Int
+
   def at( index: Variable ): Variable
   def replace( index: Variable, value: Variable ): Variable
 
