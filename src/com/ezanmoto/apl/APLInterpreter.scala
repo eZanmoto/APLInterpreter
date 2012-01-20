@@ -18,7 +18,7 @@ class APLInterpreter {
   def interpret(): Unit = {
     in.skipWhitespace()
     in.peek match {
-      case '\'' | '~' | Integer( _ ) | 'i' | 'p' | '+' =>
+      case '\'' | '~' | Integer( _ ) | 'i' | 'p' | '+' | '(' =>
         println( expression() )
       case ':'  => runCommand()
       case Uppercase( _ ) => assignment()
@@ -61,7 +61,17 @@ class APLInterpreter {
       }
   }
 
-  def expression(): Variable = expressionAfter( readValue() )
+  def expression(): Variable = {
+    in.skipWhitespace()
+    if ( '(' == in.peek ) {
+      in eat '('
+      val e = expressionAfter( expression() )
+      in.skipWhitespace()
+      in eat ')'
+      expressionAfter( e )
+    } else
+      expressionAfter( readValue() )
+  }
 
   def expressionAfter( a: Variable ): Variable = {
     in.skipWhitespace()
@@ -69,27 +79,28 @@ class APLInterpreter {
       a
     else
       in.peek match {
-        case '+' => in eat '+'; expressionAfter( a +  readValue() )
-        case '-' => in eat '-'; expressionAfter( a -  readValue() )
-        case 'x' => in eat 'x'; expressionAfter( a *  readValue() )
-        case '%' => in eat '%'; expressionAfter( a /  readValue() )
-        case '|' => in eat '|'; expressionAfter( a %  readValue() )
-        case ',' => in eat ','; expressionAfter( a ++ readValue() )
+        case '+' => in eat '+'; expressionAfter( a +  expression() )
+        case '-' => in eat '-'; expressionAfter( a -  expression() )
+        case 'x' => in eat 'x'; expressionAfter( a *  expression() )
+        case '%' => in eat '%'; expressionAfter( a /  expression() )
+        case '|' => in eat '|'; expressionAfter( a %  expression() )
+        case ',' => in eat ','; expressionAfter( a ++ expression() )
         case '[' => expressionAfter( a at readIndex() )
-        case '=' => in eat '='; expressionAfter( a == readValue() )
-        case 'n' => in eat 'n'; expressionAfter( a != readValue() )
-        case '<' => in eat '<'; expressionAfter( a <  readValue() )
-        case 'l' => in eat 'l'; expressionAfter( a <= readValue() )
-        case '>' => in eat '>'; expressionAfter( a >  readValue() )
-        case 'g' => in eat 'g'; expressionAfter( a >= readValue() )
-        case 'r' => in eat 'r'; expressionAfter( a max readValue() )
-        case '_' => in eat '_'; expressionAfter( a min readValue() )
+        case '=' => in eat '='; expressionAfter( a == expression() )
+        case 'n' => in eat 'n'; expressionAfter( a != expression() )
+        case '<' => in eat '<'; expressionAfter( a <  expression() )
+        case 'l' => in eat 'l'; expressionAfter( a <= expression() )
+        case '>' => in eat '>'; expressionAfter( a >  expression() )
+        case 'g' => in eat 'g'; expressionAfter( a >= expression() )
+        case 'r' => in eat 'r'; expressionAfter( a max expression() )
+        case '_' => in eat '_'; expressionAfter( a min expression() )
         case Integer( _ ) | '~' =>
           if ( a.isInteger )
             expressionAfter( Variable( readListAfter( a integerValue ) ) )
           else {
             unexpected()
           }
+        case '(' => expressionAfter( expression() )
         case _   => a
       }
   }
@@ -199,7 +210,7 @@ class APLInterpreter {
       in.eat( ':' )
       in.skipWhitespace()
       if ( index == None )
-        env = env + ( name -> readValue() )
+        env = env + ( name -> expression() )
       else if ( lookup( name ) isInteger )
         error( "cannot index integer" )
       else
