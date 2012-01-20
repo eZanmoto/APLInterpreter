@@ -63,5 +63,7 @@ class APLInteger( private val integer: Int ) extends Variable {
 
   def length = throw new RuntimeException( "Can't get length of integer" )
 
+  def sum: Variable = this
+
   override val toString = integer toString
 }

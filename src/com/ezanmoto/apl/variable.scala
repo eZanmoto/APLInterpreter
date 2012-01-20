@@ -23,6 +23,7 @@ trait Variable {
   def min( v: Variable ): Variable
 
   def length: Int
+  def sum: Variable
 
   def at( index: Variable ): Variable
   def replace( index: Variable, value: Variable ): Variable

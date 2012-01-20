@@ -131,6 +131,8 @@ class APLList( private val list: List[Int] ) extends Variable {
 
   val length = list length
 
+  def sum: Variable = Variable( list reduceRight( _ + _ ) )
+
   override def toString = {
     var string = String valueOf list.head
     for ( e <- list drop 1 )

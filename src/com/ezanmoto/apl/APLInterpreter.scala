@@ -18,7 +18,8 @@ class APLInterpreter {
   def interpret(): Unit = {
     in.skipWhitespace()
     in.peek match {
-      case '\'' | '~' | Integer( _ ) | 'i' | 'p' => println( expression() )
+      case '\'' | '~' | Integer( _ ) | 'i' | 'p' | '+' =>
+        println( expression() )
       case ':'  => runCommand()
       case Uppercase( _ ) => assignment()
       case _    => unexpected()
@@ -148,6 +149,7 @@ class APLInterpreter {
         case Integer( _ ) | '~' => readIntegerOrList()
         case 'i' => interval()
         case 'p' => length()
+        case '+' => sum()
         case _ => error( "Expected '~', identifier, integer or string" )
       }
   }
@@ -197,7 +199,7 @@ class APLInterpreter {
       in.eat( ':' )
       in.skipWhitespace()
       if ( index == None )
-        env = env + ( name -> readRHS() )
+        env = env + ( name -> readValue() )
       else if ( lookup( name ) isInteger )
         error( "cannot index integer" )
       else
@@ -227,14 +229,14 @@ class APLInterpreter {
     Variable( readValue() length )
   }
 
-  def indexAssignment( lhs: Variable, index: Variable ): Variable =
-    lhs replace ( index, readRHS() )
-
-  def readRHS(): Variable = in.peek match {
-    case '\'' => Variable( readString() )
-    case Uppercase( _ ) | '~' | Integer( _ ) => expression()
-    case v => unexpected()
+  def sum(): Variable = {
+    in eat "+/"
+    in.skipWhitespace()
+    readValue() sum
   }
+
+  def indexAssignment( lhs: Variable, index: Variable ): Variable =
+    lhs replace ( index, readValue() )
 
   def lookup( name: String ): Variable = ( env get name ) match {
     case Some( x ) => x
