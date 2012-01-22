@@ -30,7 +30,7 @@ class APLInterpreter {
         case Uppercase( _ ) => assignmentOrExpressionOrProgram()
         case '(' | '\'' | '~' | Integer( _ ) | 'i' | 'p' | '+' =>
           println( expression() )
-        case ':' => in.eat( ':' ); command()
+        case ')' => in.eat( ')' ); command()
         case 'd' => program()
         case _ => unexpected()
       }
@@ -253,9 +253,21 @@ class APLInterpreter {
       error( "Expected further input" )
     else
       in.peek match {
-        case 'q' => in eat 'q'; isRunning = false; println( "Goodbye." )
+        case 'O' => in.eat( "OFF" ); isRunning = false; println( "Goodbye." )
+        case 'E' => in.eat( "ERASE" ); erase()
         case _   => unexpected()
       }
+
+  def erase(): Unit = {
+    do {
+      in.skipWhitespace()
+      val name = readName()
+      if ( programs contains name )
+        programs = programs - name
+      else
+        error( "No program named '" + name + "'" )
+    } while ( ! in.isEmpty )
+  }
 
   def program(): Unit = {
     in.eat( 'd' )

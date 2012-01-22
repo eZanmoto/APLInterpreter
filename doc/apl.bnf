@@ -42,7 +42,8 @@ unaryFunction ::= 'i' expression
                 | 'p' expression
                 | "+/" expression
 
-command ::= ":q"
+command ::= ")OFF"
+          | ")ERASE"
 
 programDefinition ::= 'd' NAME '\n' .* 'd'
 
