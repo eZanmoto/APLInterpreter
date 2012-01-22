@@ -1,6 +1,8 @@
 start ::= assignment
         | expression
         | command
+        | programDefinition
+        | programCall
 
 assignment ::= NAME index? ':' expression
 
@@ -41,6 +43,10 @@ unaryFunction ::= 'i' expression
                 | "+/" expression
 
 command ::= ":q"
+
+programDefinition ::= 'd' NAME '\n' .* 'd'
+
+programCall ::= NAME
 
 STRING ::= '\'' .* '\''
 

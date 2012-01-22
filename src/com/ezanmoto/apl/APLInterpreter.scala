@@ -2,11 +2,16 @@ package com.ezanmoto.apl
 
 import com.ezanmoto.apl.Type._
 
+import java.io.BufferedReader
+import java.io.InputStreamReader
+
 class APLInterpreter {
 
   private var line = ""
 
   private var env = Map[String, Variable]()
+
+  private var programs = Map[String, List[String]]()
 
   private var in = new LookaheadStream( line )
 
@@ -20,28 +25,36 @@ class APLInterpreter {
 
   def interpret(): Unit = {
     in.skipWhitespace()
-    in.peek match {
-      case Uppercase( _ ) => assignmentOrExpression()
-      case '(' | '\'' | '~' | Integer( _ ) | 'i' | 'p' | '+' =>
-        println( expression() )
-      case ':' => in.eat( ':' ); command()
-      case _ => unexpected()
-    }
-    in.skipWhitespace()
-    if ( ! in.isEmpty ) error( "Trailing characters" )
+    if ( ! in.isEmpty )
+      in.peek match {
+        case Uppercase( _ ) => assignmentOrExpressionOrProgram()
+        case '(' | '\'' | '~' | Integer( _ ) | 'i' | 'p' | '+' =>
+          println( expression() )
+        case ':' => in.eat( ':' ); command()
+        case 'd' => program()
+        case _ => unexpected()
+      }
+      in.skipWhitespace()
+      if ( ! in.isEmpty ) error( "Trailing characters" )
   }
 
-  def assignmentOrExpression() = {
+  def assignmentOrExpressionOrProgram() = {
     val name = readName()
     in.skipWhitespace()
     val index =
       if ( ! in.isEmpty && in.peek == '[' ) Some( readIndex() ) else None
     in.skipWhitespace()
     if ( in.isEmpty ) { // Print value
-      var value: Variable = lookup( name )
-      if ( None != index )
-        value = value at index.get
-      println( value )
+      if ( isProgram( name ) && isVariable( name ) )
+        error( "Program and variable called '" + name + "'" )
+      else if ( isProgram( name ) )
+        call( name )
+      else {
+        var value: Variable = lookup( name )
+        if ( None != index )
+          value = value at index.get
+        println( value )
+      }
     } else if ( in.peek == ':' ) { // Assignment
       in.eat( ':' )
       in.skipWhitespace()
@@ -66,6 +79,14 @@ class APLInterpreter {
     in eat ']'
     i
   }
+
+  def isProgram( name: String ) = programs contains name
+
+  def isVariable( name: String ) = env contains name
+
+  def call( name: String ): Unit =
+    for ( sourceLine <- ( programs get name ) get )
+      this interpret sourceLine
 
   def lookup( name: String ): Variable = ( env get name ) match {
     case Some( x ) => x
@@ -235,4 +256,31 @@ class APLInterpreter {
         case 'q' => in eat 'q'; isRunning = false; println( "Goodbye." )
         case _   => unexpected()
       }
+
+  def program(): Unit = {
+    in.eat( 'd' )
+    in.skipWhitespace()
+    val name = readName()
+    if ( env.contains( name ) )
+      error( "'" + name + "' is a variable" )
+    else
+      programs = programs + ( name -> readProgram() )
+  }
+
+  def readProgram(): List[String] = {
+    val isr    = new InputStreamReader( System.in )
+    val reader = new BufferedReader( isr )
+    var finished = false
+    var lines: List[String] = Nil
+    var i = 0
+    while ( ! finished ) {
+      i += 1
+      print( "[" + i + "]   " )
+      val input = reader.readLine()
+      finished = input startsWith "d"
+      if ( ! finished )
+        lines = lines ::: List( input )
+    }
+    lines
+  }
 }
