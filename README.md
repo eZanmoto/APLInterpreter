@@ -5,7 +5,7 @@ Running
 -------
 
 To prepare your environment to compile Scala with ant, please ensure that
-`scala-library.jar` and `scala-library.jar` are in `$SCALA_HOME/lib`, and that
+`scala-library.jar` and `scala-compiler.jar` are in `$SCALA_HOME/lib`, and that
 `$SCALA_HOME` is set accordingly.
 
 To run, execute
