@@ -148,6 +148,8 @@ Example Session
     15
 
         )ERASE SUMAB
+
+        SUMAB
     [!] Error: 'SUMAB' has not been declared
 
         )OFF
