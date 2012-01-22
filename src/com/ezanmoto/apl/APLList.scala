@@ -129,8 +129,9 @@ class APLList( private val list: List[Int] ) extends Variable {
   def max( v: Variable ) = best( ( a, b ) => if ( a > b ) a else b, v )
   def min( v: Variable ) = best( ( a, b ) => if ( a < b ) a else b, v )
 
+  def interval: APLList =
+    throw new RuntimeException( "Can't get interval to a list" )
   val length = list length
-
   def sum: Variable = Variable( list reduceRight( _ + _ ) )
 
   override def toString = {

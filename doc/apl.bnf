@@ -4,16 +4,14 @@ start ::= assignment
 
 assignment ::= NAME index? ':' expression
 
-expression ::= value arithmetic?
+expression ::= value index? arithmetic?
 
 value ::= '(' expression ')'
         | STRING
-        | variable
+        | NAME
         | SIGNED_INTEGER
-        | LIST index?
+        | LIST
         | unaryFunction
-
-variable ::= NAME index?
 
 arithmetic ::= '+' expression
              | '-' expression

@@ -22,6 +22,7 @@ trait Variable {
   def max( v: Variable ): Variable
   def min( v: Variable ): Variable
 
+  def interval: APLList
   def length: Int
   def sum: Variable
 

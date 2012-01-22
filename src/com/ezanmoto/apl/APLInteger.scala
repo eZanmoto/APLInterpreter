@@ -61,6 +61,14 @@ class APLInteger( private val integer: Int ) extends Variable {
     else
       best( ( a, b ) => if ( a < b ) a else b, v )
 
+  def interval: APLList = Variable( upTo( 1, integer  ) )
+
+  private def upTo( a: Int, b: Int ): List[Int] =
+    if ( a <= b )
+      a :: upTo( a + 1, b )
+    else
+      Nil
+
   def length = throw new RuntimeException( "Can't get length of integer" )
 
   def sum: Variable = this

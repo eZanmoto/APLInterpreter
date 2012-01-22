@@ -29,21 +29,21 @@ Example Session
     1 2 3 4
 
           1 2 3 4 + 1
-    List(2, 3, 4, 5)
+    2 3 4 5
 
           1 2 3 4 + 1 2 3 4
-    List(2, 4, 6, 8)
+    2 4 6 8
 
         L : 1 2
         L : L, 3 4
         L
-    List(1, 2, 3, 4)
+    1 2 3 4
 
         L x 2
-    List(2, 4, 6, 8)
+    2 4 6 8
 
         L x 1 2 3 4
-    List(1, 4, 9, 16)
+    1 4 9 16
 
         L : L x 1 2 3 4
         L [ 3 ]
@@ -51,7 +51,7 @@ Example Session
 
         L [ 3 ] : 25
         L
-    List(1, 4, 25, 16)
+    1 4 25 16
 
         L [ 1 + 3 ]
     16
@@ -60,10 +60,10 @@ Example Session
     26
 
         L [ 1 3 ]
-    List(1, 25)
+    1 25
 
         L [ 3 1 ]
-    List(25, 1)
+    25 1
 
         S : 'HI'
         S [ 2 ] : 'A'
@@ -78,7 +78,7 @@ Example Session
         I : 1 2 3 4
         I [ 4 1 ] : I [ 1 4 ]
         I
-    List(4, 2, 3, 1)
+    4 2 3 1
 
         S = 'HIKE'
     0 0 1 1
@@ -117,6 +117,24 @@ Example Session
 
         L _ 3
     1 2 3 3 3
+
+        p L
+    5
+
+        p L , 0
+    6
+
+        p L [ 2 3 4 ]
+    3
+
+        i 5
+    1 2 3 4 5
+
+        +/ 1 2 3
+    6
+
+        +/ i 5
+    15
 
         :q
     Goodbye.

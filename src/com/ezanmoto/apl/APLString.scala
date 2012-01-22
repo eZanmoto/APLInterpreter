@@ -124,9 +124,10 @@ class APLString( private val string: String ) extends Variable {
   def max( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
   def min( v: Variable ) = throw new RuntimeException( "Not implemented yet" )
 
-  def sum: Variable = throw new RuntimeException( "Can't sum a string" )
-
+  def interval: APLList =
+    throw new RuntimeException( "Can't get interval to a string" )
   val length = string.length
+  def sum: Variable = throw new RuntimeException( "Can't sum a string" )
 
   override def toString = string
 }
