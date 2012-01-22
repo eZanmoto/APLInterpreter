@@ -1,0 +1,55 @@
+start ::= assignment
+        | expression
+        | command
+
+assignment ::= NAME index? ':' expression
+
+expression ::= value arithmetic?
+
+value ::= '(' expression ')'
+        | STRING
+        | variable
+        | SIGNED_INTEGER
+        | LIST index?
+        | unaryFunction
+
+variable ::= NAME index?
+
+arithmetic ::= '+' expression
+             | '-' expression
+             | 'x' expression
+             | '%' expression
+             | '|' expression
+             | concatenation
+
+concatenation ::= ',' expression
+                | comparison
+
+comparison ::= '=' expression
+             | 'n' expression
+             | '<' expression
+             | 'l' expression
+             | '>' expression
+             | 'g' expression
+             | minimax
+
+minimax ::= 'r' expression
+          | '_' expression
+
+index ::= '[' expression ']'
+
+unaryFunction ::= 'i' expression
+                | 'p' expression
+                | "+/" expression
+
+command ::= ":q"
+
+STRING ::= '\'' .* '\''
+
+SIGNED_INTEGER ::= '~'? INTEGER
+
+INTEGER* ::= '0' .. '9'
+
+NAME ::= UPPERCASE+
+
+UPPERCASE* ::= 'A' .. 'Z'
