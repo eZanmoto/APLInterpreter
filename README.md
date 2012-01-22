@@ -4,13 +4,17 @@ APL Interpreter
 Running
 -------
 
+To prepare your environment to compile Scala with ant, please ensure that
+`scala-library.jar` and `scala-library.jar` are in `$SCALA_HOME/lib`, and that
+`$SCALA_HOME` is set accordingly.
+
 To run, execute
 
     ant
 
 to quit, run the command
 
-    :q
+    )OFF
 
 Example Session
 ---------------
@@ -136,7 +140,17 @@ Example Session
         +/ i 5
     15
 
-        :q
+        d SUMAB
+    [1] A + B
+    [2] d
+
+        SUMAB
+    15
+
+        )ERASE SUMAB
+    [!] Error: 'SUMAB' has not been declared
+
+        )OFF
     Goodbye.
 
 About
