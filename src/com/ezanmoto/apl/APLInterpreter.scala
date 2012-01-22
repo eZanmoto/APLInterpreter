@@ -31,7 +31,7 @@ class APLInterpreter {
         case '(' | '\'' | '~' | Integer( _ ) | 'i' | 'p' | '+' =>
           println( expression() )
         case ')' => in.eat( ')' ); command()
-        case 'd' => program()
+        case 'v' => program()
         case _ => unexpected()
       }
       in.skipWhitespace()
@@ -270,13 +270,32 @@ class APLInterpreter {
   }
 
   def program(): Unit = {
-    in.eat( 'd' )
+    in.eat( 'v' )
     in.skipWhitespace()
     val name = readName()
-    if ( env.contains( name ) )
+    in.skipWhitespace()
+    if ( ! in.isEmpty && in.peek == '[' ) {
+      in.eat( "[b]" )
+      in.skipWhitespace()
+      in.eat( 'v' )
+      printProgram( name )
+    } else if ( env.contains( name ) )
       error( "'" + name + "' is a variable" )
     else
       programs = programs + ( name -> readProgram() )
+  }
+
+  def printProgram( name: String ) = {
+    if ( isProgram( name ) ) {
+      println( "      v " + name )
+      var i = 0
+      for ( l <- ( programs get name ) get ) {
+        i += 1
+        println( "[" + i + "]   " + l )
+      }
+      println( "      v" )
+    } else
+      error( "No program named '" + name + "'" )
   }
 
   def readProgram(): List[String] = {
@@ -289,7 +308,7 @@ class APLInterpreter {
       i += 1
       print( "[" + i + "]   " )
       val input = reader.readLine()
-      finished = input startsWith "d"
+      finished = input startsWith "v"
       if ( ! finished )
         lines = lines ::: List( input )
     }
