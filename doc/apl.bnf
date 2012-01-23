@@ -48,10 +48,11 @@ programDefinition ::= 'v' NAME '\n' .* 'v'
 
 programCall ::= NAME
 
-programEdit ::= 'v' NAME '[' editCommand ']' 'v'
+programEdit ::= 'v' NAME '[' editCommand ']' .* 'v'
 
 editCommand ::= 'u' INTEGER
               | 'b'
+              | INTEGER
 
 STRING ::= '\'' .* '\''
 

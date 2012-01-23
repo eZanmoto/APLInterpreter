@@ -11,7 +11,7 @@ class APLInterpreter {
 
   private var env = Map[String, Variable]()
 
-  private var programs = Map[String, List[String]]()
+  private var programs = Map[String, Program]()
 
   private var in = new LookaheadStream( line )
 
@@ -48,7 +48,7 @@ class APLInterpreter {
       if ( isProgram( name ) && isVariable( name ) )
         error( "Program and variable called '" + name + "'" )
       else if ( isProgram( name ) )
-        call( name )
+        call( ( programs get name ) get )
       else {
         var value: Variable = lookup( name )
         if ( None != index )
@@ -84,9 +84,7 @@ class APLInterpreter {
 
   def isVariable( name: String ) = env contains name
 
-  def call( name: String ): Unit =
-    for ( sourceLine <- ( programs get name ) get )
-      this interpret sourceLine
+  def call( program: Program ): Unit = program.lines.foreach( this interpret _ )
 
   def lookup( name: String ): Variable = ( env get name ) match {
     case Some( x ) => x
@@ -264,8 +262,10 @@ class APLInterpreter {
       val name = readName()
       if ( programs contains name )
         programs = programs - name
+      else if ( env contains name )
+        env = env - name
       else
-        error( "No program named '" + name + "'" )
+        error( "Nothing named '" + name + "'" )
     } while ( ! in.isEmpty )
   }
 
@@ -275,7 +275,11 @@ class APLInterpreter {
     val name = readName()
     in.skipWhitespace()
     if ( ! in.isEmpty && in.peek == '[' ) {
-      programEdit( name )
+      programs get name match {
+        case Some( program ) => 
+          programs = programs + ( name -> programEdit( program ) )
+        case None => error( "No program named '" + name + "'" )
+      }
       in.skipWhitespace()
       in.eat( 'v' )
     } else if ( env.contains( name ) )
@@ -283,51 +287,54 @@ class APLInterpreter {
     else {
       val program = programs get name match {
         case Some( p ) => p
-        case None      => Nil
+        case None      => new APLProgram( name )
       }
-      programs = programs + ( name -> readProgramWith( program ) )
+      programs = programs + ( name -> readProgramLines( program ) )
     }
   }
 
-  def programEdit( name: String ): Unit = {
+  def programEdit( program: Program ): Program = {
     in.eat( '[' )
     in.skipWhitespace()
     in.peek match {
-      case 'u' => in.eat( 'u' ); deleteProgramLine( name, integer() )
-      case 'b' => in.eat( 'b' ); printProgram( name )
+      case Integer( _ ) => replaceProgramLine( program, integer() )
+      case _ => programEdit_( program )
+    }
+  }
+
+  def programEdit_( program: Program ): Program = {
+    val result = in.peek match {
+      case 'u' => in.eat( 'u' ); program deleteLine integer()
+      case 'b' => in.eat( 'b' ); println( program ); program
+      case _ => unexpected()
     }
     in.skipWhitespace()
     in.eat( ']' )
+    in.skipWhitespace()
+    result
   }
 
-  def printProgram( name: String ): Unit =
-    programs get name match {
-      case Some( program ) => {
-        println( "      v " + name )
-        var i = 0
-        for ( l <- program ) {
-          i += 1
-          println( "[" + i + "]   " + l )
-        }
-        println( "      v" )
-        }
-      case None => error( "No program named '" + name + "'" )
-    }
+  def replaceProgramLine( program: Program, n: Int ): Program = {
+    in.skipWhitespace()
+    in.eat( ']' )
+    in.skipWhitespace()
+    program replace ( n, readProgramLine() )
+  }
 
-  def deleteProgramLine( name: String, line: Int ): Unit =
-    programs get name match {
-      case Some( program ) => {
-        val p = ( program take ( line - 1 ) ) ::: ( program drop line )
-        programs = programs + ( name -> p )
-      }
-      case None => error( "No program named '" + name + "'" )
-    }
+  def readProgramLine(): String = {
+    val isr      = new InputStreamReader( System.in )
+    val reader   = new BufferedReader( isr )
+    var l = ""
+    while ( in.peek != 'v' )
+      l += in.drop()
+    l
+  }
 
-  def readProgramWith( origin: List[String] ): List[String] = {
+  def readProgramLines( program: Program ): Program = {
     val isr      = new InputStreamReader( System.in )
     val reader   = new BufferedReader( isr )
     var finished = false
-    var lines    = origin
+    var lines: List[String] = Nil
     while ( ! finished ) {
       print( "[" + ( lines.length + 1 ) + "]   " )
       val input = reader.readLine()
@@ -335,6 +342,6 @@ class APLInterpreter {
       if ( ! finished )
         lines = lines ::: List( input )
     }
-    lines
+    program ++ lines
   }
 }
