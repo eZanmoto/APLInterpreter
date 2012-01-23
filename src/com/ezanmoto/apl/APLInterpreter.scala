@@ -275,10 +275,9 @@ class APLInterpreter {
     val name = readName()
     in.skipWhitespace()
     if ( ! in.isEmpty && in.peek == '[' ) {
-      in.eat( "[b]" )
+      programEdit( name )
       in.skipWhitespace()
       in.eat( 'v' )
-      printProgram( name )
     } else if ( env.contains( name ) )
       error( "'" + name + "' is a variable" )
     else {
@@ -290,18 +289,39 @@ class APLInterpreter {
     }
   }
 
-  def printProgram( name: String ) = {
-    if ( isProgram( name ) ) {
-      println( "      v " + name )
-      var i = 0
-      for ( l <- ( programs get name ) get ) {
-        i += 1
-        println( "[" + i + "]   " + l )
-      }
-      println( "      v" )
-    } else
-      error( "No program named '" + name + "'" )
+  def programEdit( name: String ): Unit = {
+    in.eat( '[' )
+    in.skipWhitespace()
+    in.peek match {
+      case 'u' => in.eat( 'u' ); deleteProgramLine( name, integer() )
+      case 'b' => in.eat( 'b' ); printProgram( name )
+    }
+    in.skipWhitespace()
+    in.eat( ']' )
   }
+
+  def printProgram( name: String ): Unit =
+    programs get name match {
+      case Some( program ) => {
+        println( "      v " + name )
+        var i = 0
+        for ( l <- program ) {
+          i += 1
+          println( "[" + i + "]   " + l )
+        }
+        println( "      v" )
+        }
+      case None => error( "No program named '" + name + "'" )
+    }
+
+  def deleteProgramLine( name: String, line: Int ): Unit =
+    programs get name match {
+      case Some( program ) => {
+        val p = ( program take ( line - 1 ) ) ::: ( program drop line )
+        programs = programs + ( name -> p )
+      }
+      case None => error( "No program named '" + name + "'" )
+    }
 
   def readProgramWith( origin: List[String] ): List[String] = {
     val isr      = new InputStreamReader( System.in )

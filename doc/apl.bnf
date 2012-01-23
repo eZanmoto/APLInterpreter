@@ -1,8 +1,6 @@
 start ::= assignment
         | expression
-        | command
-        | programDefinition
-        | programCall
+        | program
 
 assignment ::= NAME index? ':' expression
 
@@ -42,12 +40,18 @@ unaryFunction ::= 'i' expression
                 | 'p' expression
                 | "+/" expression
 
-command ::= ")OFF"
-          | ")ERASE"
+program ::= programDefinition
+          | programCall
+          | programEdit
 
-programDefinition ::= 'd' NAME '\n' .* 'd'
+programDefinition ::= 'v' NAME '\n' .* 'v'
 
 programCall ::= NAME
+
+programEdit ::= 'v' NAME '[' editCommand ']' 'v'
+
+editCommand ::= 'u' INTEGER
+              | 'b'
 
 STRING ::= '\'' .* '\''
 
