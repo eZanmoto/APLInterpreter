@@ -281,8 +281,13 @@ class APLInterpreter {
       printProgram( name )
     } else if ( env.contains( name ) )
       error( "'" + name + "' is a variable" )
-    else
-      programs = programs + ( name -> readProgram() )
+    else {
+      val program = programs get name match {
+        case Some( p ) => p
+        case None      => Nil
+      }
+      programs = programs + ( name -> readProgramWith( program ) )
+    }
   }
 
   def printProgram( name: String ) = {
@@ -298,15 +303,13 @@ class APLInterpreter {
       error( "No program named '" + name + "'" )
   }
 
-  def readProgram(): List[String] = {
-    val isr    = new InputStreamReader( System.in )
-    val reader = new BufferedReader( isr )
+  def readProgramWith( origin: List[String] ): List[String] = {
+    val isr      = new InputStreamReader( System.in )
+    val reader   = new BufferedReader( isr )
     var finished = false
-    var lines: List[String] = Nil
-    var i = 0
+    var lines    = origin
     while ( ! finished ) {
-      i += 1
-      print( "[" + i + "]   " )
+      print( "[" + ( lines.length + 1 ) + "]   " )
       val input = reader.readLine()
       finished = input startsWith "v"
       if ( ! finished )

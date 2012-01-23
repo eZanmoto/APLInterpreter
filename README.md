@@ -140,12 +140,29 @@ Example Session
         +/ i 5
     15
 
-        d SUMAB
+        v SUMAB
     [1] A + B
-    [2] d
+    [2] v
 
         SUMAB
     15
+
+        v SUMAB [b] v
+
+        v SUMAB
+    [1] A + B
+    [2] v
+
+        v SUMAB
+    [2] 'IS THE SUM OF A AND B'
+    [3] v
+
+        v SUMAB [b] v
+
+        v SUMAB
+    [1] A + B
+    [2] 'IS THE SUM OF A AND B'
+        v
 
         )ERASE SUMAB
 
