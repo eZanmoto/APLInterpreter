@@ -297,25 +297,32 @@ class APLInterpreter {
     in.eat( '[' )
     in.skipWhitespace()
     in.peek match {
-      case Integer( _ ) => replaceProgramLine( program, integer() )
+      case Integer( _ ) => programLineNumber( program, integer() )
       case _ => programEdit_( program )
     }
   }
 
-  def programEdit_( program: Program ): Program = {
-    val result = in.peek match {
-      case 'u' => in.eat( 'u' ); program deleteLine integer()
-      case 'b' => in.eat( 'b' ); println( program ); program
+  def programLineNumber( program: Program, n: Int ): Program = {
+    in.skipWhitespace()
+    // TODO implement prompted replacement
+    in.peek match {
+      case ']' => replaceProgramLine( program, n )
+      case 'b' => {
+        if ( n > 0 && n <= program.lines.size ) {
+          println( program.lines( n - 1 ) )
+          in.eat( 'b' )
+          in.skipWhitespace()
+          in.eat( ']' )
+          in.skipWhitespace()
+          program
+        } else
+          error( "Index must be in range [1.." + program.lines.size + "]" )
+      }
       case _ => unexpected()
     }
-    in.skipWhitespace()
-    in.eat( ']' )
-    in.skipWhitespace()
-    result
   }
 
   def replaceProgramLine( program: Program, n: Int ): Program = {
-    in.skipWhitespace()
     in.eat( ']' )
     in.skipWhitespace()
     program replace ( n, readProgramLine() )
@@ -328,6 +335,18 @@ class APLInterpreter {
     while ( in.peek != 'v' )
       l += in.drop()
     l
+  }
+
+  def programEdit_( program: Program ): Program = {
+    val result = in.peek match {
+      case 'u' => in.eat( 'u' ); program deleteLine integer()
+      case 'b' => in.eat( 'b' ); println( program ); program
+      case _ => unexpected()
+    }
+    in.skipWhitespace()
+    in.eat( ']' )
+    in.skipWhitespace()
+    result
   }
 
   def readProgramLines( program: Program ): Program = {
