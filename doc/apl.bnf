@@ -45,6 +45,11 @@ program ::= programDefinition
           | programEdit
 
 programDefinition ::= 'v' NAME '\n' .* 'v'
+                    | 'v' NAME ':' NAME NAME
+
+programDefinition ::= 'v' NAME ( ':' NAME NAME )? '\n'
+                      ( .* '\n' )*
+                      'v'
 
 programCall ::= NAME
 

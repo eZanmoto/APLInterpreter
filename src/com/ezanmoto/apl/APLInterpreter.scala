@@ -47,8 +47,10 @@ class APLInterpreter {
     if ( in.isEmpty ) { // Print value
       if ( isProgram( name ) && isVariable( name ) )
         error( "Program and variable called '" + name + "'" )
-      else if ( isProgram( name ) )
+      else if ( isNiladicProgram( name ) )
         call( ( programs get name ) get )
+      else if ( isMonadicProgram( name ) )
+        call( programs get name get, expression() )
       else {
         var value: Variable = lookup( name )
         if ( None != index )
@@ -80,11 +82,33 @@ class APLInterpreter {
     i
   }
 
+  def isXProgram( isX: (Program) => Boolean )( name: String ) =
+    programs get name match {
+      case Some( program ) => isX( program )
+      case None => false
+    }
+
+  val isNiladicProgram = isXProgram( _.isNiladic ) _
+  val isMonadicProgram = isXProgram( _.isMonadic ) _
+  val isDyadicProgram  = isXProgram( _.isDyadic  ) _
+
   def isProgram( name: String ) = programs contains name
 
   def isVariable( name: String ) = env contains name
 
   def call( program: Program ): Unit = program.lines.foreach( this interpret _ )
+
+  def call( program: Program, parameter: Variable ): Variable = {
+    val backup = env
+    env = env + ( program.arg1Name -> parameter )
+    call( program )
+    val result = env get program.returnName match {
+      case Some( value ) => value
+      case None => error( "Return value '" + program.returnName + "' not set" )
+    }
+    env = backup
+    result
+  }
 
   def lookup( name: String ): Variable = ( env get name ) match {
     case Some( x ) => x
@@ -133,6 +157,13 @@ class APLInterpreter {
     case 'i' => in.eat( 'i'  ); expression() interval
     case 'p' => in.eat( 'p'  ); Variable( expression() length )
     case '+' => in.eat( "+/" ); expression() sum
+    case _   => {
+      val name = readName()
+      if ( isMonadicProgram( name ) )
+        call( programs get name get, expression() )
+      else
+        error( "'" + name + "' is not a monadic program" )
+    }
   }
 
   def integerOrListAfter( integer: Int ): Variable = {
@@ -272,7 +303,7 @@ class APLInterpreter {
   def program(): Unit = {
     in.eat( 'v' )
     in.skipWhitespace()
-    val name = readName()
+    var name = readName()
     in.skipWhitespace()
     if ( ! in.isEmpty && in.peek == '[' ) {
       programs get name match {
@@ -287,7 +318,17 @@ class APLInterpreter {
     else {
       val program = programs get name match {
         case Some( p ) => p
-        case None      => new APLProgram( name )
+        case None =>
+          if ( ! in.isEmpty && in.peek == ':' ) {
+            in.eat( ':' )
+            in.skipWhitespace()
+            val resultName = name
+            name = readName()
+            in.skipWhitespace()
+            val argName = readName()
+            new MonadicProgram( name, Nil, resultName, argName )
+          } else
+            new APLProgram( name )
       }
       programs = programs + ( name -> readProgramLines( program ) )
     }
@@ -357,8 +398,12 @@ class APLInterpreter {
     while ( ! finished ) {
       print( "[" + ( lines.length + 1 ) + "]   " )
       val input = reader.readLine()
-      finished = input startsWith "v"
-      if ( ! finished )
+      if ( input startsWith "v" ) {
+        finished = true
+      } else if ( input endsWith "v" ) {
+        finished = true
+        lines = lines ::: List( input take ( input.length - 1 ) )
+      } else
         lines = lines ::: List( input )
     }
     program ++ lines
