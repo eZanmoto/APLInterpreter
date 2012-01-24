@@ -2,7 +2,7 @@ start ::= assignment
         | expression
         | program
 
-assignment ::= NAME index? ':' expression
+assignment ::= NAME index? LEFT_ARROW expression
 
 expression ::= value index? arithmetic?
 
@@ -15,49 +15,65 @@ value ::= '(' expression ')'
 
 arithmetic ::= '+' expression
              | '-' expression
-             | 'x' expression
-             | '%' expression
-             | '|' expression
+             | MULTIPLY expression
+             | DIVIDE expression
+             | STILE expression
              | concatenation
 
 concatenation ::= ',' expression
                 | comparison
 
 comparison ::= '=' expression
-             | 'n' expression
+             | NOT_EQUAL expression
              | '<' expression
-             | 'l' expression
+             | LESS_THAN_OR_EQUAL expression
              | '>' expression
-             | 'g' expression
+             | GREATER_THAN_OR_EQUAL expression
              | minimax
 
-minimax ::= 'r' expression
-          | '_' expression
+minimax ::= UP_STILE expression
+          | DOWN_STILE expression
 
 index ::= '[' expression ']'
 
-unaryFunction ::= 'i' expression
-                | 'p' expression
+unaryFunction ::= IOTA expression
+                | RHO expression
                 | "+/" expression
 
 program ::= programDefinition
           | programCall
           | programEdit
 
-programDefinition ::= 'v' NAME '\n' .* 'v'
-                    | 'v' NAME ':' NAME NAME
+programDefinition ::= DEL NAME '\n' .* DEL
+                    | DEL NAME LEFT_ARROW NAME NAME
 
-programDefinition ::= 'v' NAME ( ':' NAME NAME )? '\n'
+programDefinition ::= DEL NAME ( LEFT_ARROW NAME NAME )? '\n'
                       ( .* '\n' )*
-                      'v'
+                      DEL
 
 programCall ::= NAME
 
-programEdit ::= 'v' NAME '[' editCommand ']' .* 'v'
+programEdit ::= DEL NAME '[' editCommand ']' .* DEL
 
-editCommand ::= 'u' INTEGER
-              | 'b'
+editCommand ::= DELTA INTEGER
+              | QUAD
               | INTEGER
+
+QUAD  ::= 'b'
+RHO   ::= 'p'
+IOTA  ::= 'i'
+DEL   ::= 'v'
+DELTA ::= 'u'
+MULTIPLY   ::= 'x'
+DIVIDE     ::= '%'
+STILE      ::= '|'
+MACRON     ::= '~'
+UP_STILE   ::= 'r'
+DOWN_STILE ::= '_'
+LEFT_ARROW ::= ':'
+NOT_EQUAL  ::= 'n'
+LESS_THAN_OR_EQUAL    ::= 'l'
+GREATER_THAN_OR_EQUAL ::= 'g'
 
 STRING ::= '\'' .* '\''
 

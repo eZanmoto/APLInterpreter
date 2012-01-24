@@ -7,6 +7,8 @@ import java.io.InputStreamReader
 
 class APLInterpreter {
 
+  private val key: CharacterKey = QWERTY
+
   private var line = ""
 
   private var env = Map[String, Variable]()
@@ -28,10 +30,10 @@ class APLInterpreter {
     if ( ! in.isEmpty )
       in.peek match {
         case Uppercase( _ ) => assignmentOrExpressionOrProgram()
-        case '(' | '\'' | '~' | Integer( _ ) | 'i' | 'p' | '+' =>
-          println( expression() )
+        case '(' | '\'' | key.MACRON | Integer( _ )
+           | key.IOTA | key.RHO | '+' => println( expression() )
         case ')' => in.eat( ')' ); command()
-        case 'v' => program()
+        case key.DEL => program()
         case _ => unexpected()
       }
       in.skipWhitespace()
@@ -55,8 +57,8 @@ class APLInterpreter {
           value = value at index.get
         println( value )
       }
-    } else if ( in.peek == ':' ) { // Assignment
-      in.eat( ':' )
+    } else if ( in.peek == key.LEFT_ARROW ) { // Assignment
+      in.eat( key.LEFT_ARROW )
       in.skipWhitespace()
       if ( index == None )
         env = env + ( name -> expression() )
@@ -141,7 +143,7 @@ class APLInterpreter {
   def value(): Variable = {
     in.skipWhitespace()
     if ( in.isEmpty )
-      error( "Expected '~', identifier or integer" )
+      error( "Expected '" + key.MACRON + "', identifier or integer" )
     else
       in.peek match {
         case '(' => {
@@ -160,28 +162,28 @@ class APLInterpreter {
           else
             lookup( name )
         }
-        case '~' | Integer( _ ) => integerOrListAfter( signedInteger() )
+        case key.MACRON | Integer( _ ) => integerOrListAfter( signedInteger() )
         case _ => unaryFunction()
       }
   }
 
   def unaryFunction(): Variable = in.peek match {
-    case 'i' => in.eat( 'i'  ); expression() interval
-    case 'p' => in.eat( 'p'  ); Variable( expression() length )
+    case key.IOTA => in.eat( key.IOTA ); expression() interval
+    case key.RHO  => in.eat( key.RHO  ); Variable( expression() length )
     case '+' => in.eat( "+/" ); expression() sum
     case _   => unexpected()
   }
 
   def integerOrListAfter( integer: Int ): Variable = {
     in.skipWhitespace()
-    if ( in.isEmpty || ( ! in.peek.isDigit && in.peek != '~' ) )
+    if ( in.isEmpty || ( ! in.peek.isDigit && in.peek != key.MACRON ) )
       Variable( integer )
     else {
       var list = integer :: Nil
       do {
         list = list ::: List( signedInteger() )
         in.skipWhitespace()
-      } while ( ! in.isEmpty && ( in.peek.isDigit || in.peek == '~' ) )
+      } while ( ! in.isEmpty && ( in.peek.isDigit || in.peek == key.MACRON ) )
       Variable( list )
     }
   }
@@ -189,10 +191,10 @@ class APLInterpreter {
   def signedInteger(): Int = {
     in.skipWhitespace()
     if ( in.isEmpty )
-      error( "Expected integer or '~'" )
+      error( "Expected integer or '" + key.MACRON + "'" )
     else {
-      var isNegative = in.peek == '~'
-      if ( isNegative ) in.eat( '~' )
+      var isNegative = in.peek == key.MACRON
+      if ( isNegative ) in.eat( key.MACRON )
       integer() * ( if ( isNegative ) -1 else 1 )
     }
   }
@@ -231,9 +233,10 @@ class APLInterpreter {
   def arithmetic( a: Variable ): Variable = in.peek match {
     case '+' => in.eat( '+' ); expressionAfter( a + expression() )
     case '-' => in.eat( '-' ); expressionAfter( a - expression() )
-    case 'x' => in.eat( 'x' ); expressionAfter( a * expression() )
-    case '%' => in.eat( '%' ); expressionAfter( a / expression() )
-    case '|' => in.eat( '|' ); expressionAfter( a % expression() )
+    case key.MULTIPLY =>
+      in.eat( key.MULTIPLY ); expressionAfter( a * expression() )
+    case key.DIVIDE => in.eat( key.DIVIDE ); expressionAfter( a / expression() )
+    case key.STILE  => in.eat( key.STILE  ); expressionAfter( a % expression() )
     case _   => concatenation( a )
   }
 
@@ -244,16 +247,22 @@ class APLInterpreter {
 
   def comparison( a: Variable ): Variable = in.peek match {
     case '=' => in eat '='; expressionAfter( a == expression() )
-    case 'n' => in eat 'n'; expressionAfter( a != expression() )
     case '<' => in eat '<'; expressionAfter( a <  expression() )
-    case 'l' => in eat 'l'; expressionAfter( a <= expression() )
     case '>' => in eat '>'; expressionAfter( a >  expression() )
+    case key.NOT_EQUAL =>
+      in.eat( key.LESS_THAN_OR_EQUAL ); expressionAfter( a != expression() )
+    case key.LESS_THAN_OR_EQUAL =>
+      in.eat( key.LESS_THAN_OR_EQUAL ); expressionAfter( a <= expression() )
+    case key.GREATER_THAN_OR_EQUAL =>
+      in.eat( key.GREATER_THAN_OR_EQUAL ); expressionAfter( a >= expression() )
     case _   => minimax( a )
   }
 
   def minimax( a: Variable ): Variable = in.peek match {
-    case 'r' => in eat 'r'; expressionAfter( a max expression() )
-    case '_' => in eat '_'; expressionAfter( a min expression() )
+    case key.UP_STILE =>
+      in.eat( key.UP_STILE ); expressionAfter( a max expression() )
+    case key.DOWN_STILE =>
+      in.eat( key.DOWN_STILE ); expressionAfter( a min expression() )
     case _   => a
   }
 
@@ -307,7 +316,7 @@ class APLInterpreter {
   }
 
   def program(): Unit = {
-    in.eat( 'v' )
+    in.eat( key.DEL )
     in.skipWhitespace()
     var name = readName()
     in.skipWhitespace()
@@ -318,15 +327,15 @@ class APLInterpreter {
         case None => error( "No program named '" + name + "'" )
       }
       in.skipWhitespace()
-      in.eat( 'v' )
+      in.eat( key.DEL )
     } else if ( env.contains( name ) )
       error( "'" + name + "' is a variable" )
     else {
       val program = programs get name match {
         case Some( p ) => p
         case None =>
-          if ( ! in.isEmpty && in.peek == ':' ) {
-            in.eat( ':' )
+          if ( ! in.isEmpty && in.peek == key.LEFT_ARROW ) {
+            in.eat( key.LEFT_ARROW )
             in.skipWhitespace()
             val resultName = name
             name = readName()
@@ -354,10 +363,10 @@ class APLInterpreter {
     // TODO implement prompted replacement
     in.peek match {
       case ']' => replaceProgramLine( program, n )
-      case 'b' => {
+      case key.QUAD => {
         if ( n > 0 && n <= program.lines.size ) {
           println( program.lines( n - 1 ) )
-          in.eat( 'b' )
+          in.eat( key.QUAD )
           in.skipWhitespace()
           in.eat( ']' )
           in.skipWhitespace()
@@ -379,15 +388,15 @@ class APLInterpreter {
     val isr      = new InputStreamReader( System.in )
     val reader   = new BufferedReader( isr )
     var l = ""
-    while ( in.peek != 'v' )
+    while ( in.peek != key.DEL )
       l += in.drop()
     l
   }
 
   def programEdit_( program: Program ): Program = {
     val result = in.peek match {
-      case 'u' => in.eat( 'u' ); program deleteLine integer()
-      case 'b' => in.eat( 'b' ); println( program ); program
+      case key.DELTA => in.eat( key.DELTA ); program deleteLine integer()
+      case key.QUAD  => in.eat( key.QUAD  ); println( program ); program
       case _ => unexpected()
     }
     in.skipWhitespace()
@@ -404,11 +413,11 @@ class APLInterpreter {
     while ( ! finished ) {
       print( "[" + ( lines.length + 1 ) + "]   " )
       val input = reader.readLine()
-      if ( input startsWith "v" ) {
+      if ( input startsWith ( String valueOf key.DEL ) ) {
         finished = true
         if ( input.length > 1 )
-          error( "Trailing characters after 'v'" )
-      } else if ( input endsWith "v" ) {
+          error( "Trailing characters after '" + key.DEL + "'" )
+      } else if ( input endsWith ( String valueOf key.DEL ) ) {
         finished = true
         lines = lines ::: List( input take ( input.length - 1 ) )
       } else
