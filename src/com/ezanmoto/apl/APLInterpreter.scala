@@ -49,8 +49,6 @@ class APLInterpreter {
         error( "Program and variable called '" + name + "'" )
       else if ( isNiladicProgram( name ) )
         call( ( programs get name ) get )
-      else if ( isMonadicProgram( name ) )
-        call( programs get name get, expression() )
       else {
         var value: Variable = lookup( name )
         if ( None != index )
@@ -67,7 +65,13 @@ class APLInterpreter {
         env = env + ( name -> replacement )
       }
     } else { // Start of expression
-      var value: Variable = lookup( name )
+      var value: Variable = 
+        if ( isProgram( name ) && isVariable( name ) )
+          error( "Program and variable called '" + name + "'" )
+        else if ( isMonadicProgram( name ) )
+          call( programs get name get, expression() )
+        else
+          lookup( name )
       if ( None != index )
         value = value at index.get
       println( expressionAfter( value ) )
@@ -147,7 +151,15 @@ class APLInterpreter {
           expressionAfter( e )
         }
         case '\'' => Variable( string() )
-        case Uppercase( _ ) => lookup( readName() )
+        case Uppercase( _ ) => {
+          val name = readName()
+          if ( isProgram( name ) && isVariable( name ) )
+            error( "Program and variable called '" + name + "'" )
+          else if ( isMonadicProgram( name ) )
+            call( programs get name get, expression() )
+          else
+            lookup( name )
+        }
         case '~' | Integer( _ ) => integerOrListAfter( signedInteger() )
         case _ => unaryFunction()
       }
@@ -157,13 +169,7 @@ class APLInterpreter {
     case 'i' => in.eat( 'i'  ); expression() interval
     case 'p' => in.eat( 'p'  ); Variable( expression() length )
     case '+' => in.eat( "+/" ); expression() sum
-    case _   => {
-      val name = readName()
-      if ( isMonadicProgram( name ) )
-        call( programs get name get, expression() )
-      else
-        error( "'" + name + "' is not a monadic program" )
-    }
+    case _   => unexpected()
   }
 
   def integerOrListAfter( integer: Int ): Variable = {
@@ -330,7 +336,7 @@ class APLInterpreter {
           } else
             new APLProgram( name )
       }
-      programs = programs + ( name -> readProgramLines( program ) )
+      programs = programs + ( name -> ( program ++ readProgramLines() ) )
     }
   }
 
@@ -390,7 +396,7 @@ class APLInterpreter {
     result
   }
 
-  def readProgramLines( program: Program ): Program = {
+  def readProgramLines(): List[String] = {
     val isr      = new InputStreamReader( System.in )
     val reader   = new BufferedReader( isr )
     var finished = false
@@ -400,12 +406,14 @@ class APLInterpreter {
       val input = reader.readLine()
       if ( input startsWith "v" ) {
         finished = true
+        if ( input.length > 1 )
+          error( "Trailing characters after 'v'" )
       } else if ( input endsWith "v" ) {
         finished = true
         lines = lines ::: List( input take ( input.length - 1 ) )
       } else
         lines = lines ::: List( input )
     }
-    program ++ lines
+    lines
   }
 }

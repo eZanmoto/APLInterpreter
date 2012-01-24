@@ -63,7 +63,9 @@ STRING ::= '\'' .* '\''
 
 SIGNED_INTEGER ::= '~'? INTEGER
 
-INTEGER* ::= '0' .. '9'
+INTEGER ::= DIGIT+
+
+DIGIT* ::= '0' .. '9'
 
 NAME ::= UPPERCASE+
 
