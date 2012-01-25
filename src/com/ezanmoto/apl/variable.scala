@@ -2,7 +2,7 @@ package com.ezanmoto.apl
 
 import com.ezanmoto.apl.Type._
 
-trait Variable {
+trait Variable extends scala.Serializable {
   /** Abstract */
   def getType: Type
   def +( v: Variable ): Variable

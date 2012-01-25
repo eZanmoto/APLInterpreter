@@ -7,6 +7,7 @@ import scala.util.Marshal
 
 import java.io.BufferedReader
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStreamReader
 
@@ -303,6 +304,7 @@ class APLInterpreter( private val key: CharacterKey ) {
         case 'O' => in.eat( "OFF" ); isRunning = false; println( "Goodbye." )
         case 'E' => in.eat( "ERASE" ); erase()
         case 'S' => in.eat( "SAVE" ); save()
+        case 'L' => in.eat( "LOAD" ); load()
         case _   => unexpected()
       }
 
@@ -322,19 +324,32 @@ class APLInterpreter( private val key: CharacterKey ) {
   def save(): Unit = {
     in.skipWhitespace()
     val name = readName()
-    writeEnvTo( new File( "." + name + "_env.ws" ) )
-    writeEnvTo( new File( "." + name + "_programs.ws" ) )
+    writeEnvTo( name )
+    // writeAny( programs, name + "_programs" )
     println( name + " SAVED" )
   }
 
-  def writeAny( obj: Any )( file: File ) = {
-    val out = new FileOutputStream( file )
-    out write ( Marshal dump obj )
+  def writeEnvTo( filename: String ): Unit = {
+    val file = new File( "." + filename + "_env.ws" )
+    val out  = new FileOutputStream( file )
+    out write ( Marshal dump env )
     out.close()
   }
 
-  val writeEnvTo = writeAny( env ) _
-  val writeProgramsTo = writeAny( programs ) _
+  def load(): Unit = {
+    in.skipWhitespace()
+    val name = readName()
+    loadEnvFrom( name )
+    println( name + " LOADED" )
+  }
+
+  def loadEnvFrom( filename: String ): Unit = {
+    val file = new File( "." + filename + "_env.ws" )
+    val in = new FileInputStream( file )
+    val bytes =
+      Stream.continually( in.read ).takeWhile( -1 != ).map( _.toByte ).toArray
+    env = Marshal.load[Map[String, Variable]]( bytes )
+  }
 
   def program(): Unit = {
     in.eat( key.DEL )

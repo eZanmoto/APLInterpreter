@@ -10,6 +10,8 @@ import java.util.Scanner
 
 object Interpreter {
 
+  private val debugging = true
+
   private var running = true
 
   def main( args: Array[String] ) = {
@@ -22,7 +24,7 @@ object Interpreter {
         print( "      " )
         interpreter.interpret( in.readLine() )
       } catch {
-        case e => println( e.getMessage )
+        case e => println( if ( debugging ) e else e.getMessage )
       }
     }
     in.close()
