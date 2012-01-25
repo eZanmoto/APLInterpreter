@@ -3,7 +3,11 @@ package com.ezanmoto.apl
 import com.ezanmoto.apl.Type._
 import com.ezanmoto.apl.char.CharacterKey
 
+import scala.util.Marshal
+
 import java.io.BufferedReader
+import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStreamReader
 
 class APLInterpreter( private val key: CharacterKey ) {
@@ -298,6 +302,7 @@ class APLInterpreter( private val key: CharacterKey ) {
       in.peek match {
         case 'O' => in.eat( "OFF" ); isRunning = false; println( "Goodbye." )
         case 'E' => in.eat( "ERASE" ); erase()
+        case 'S' => in.eat( "SAVE" ); save()
         case _   => unexpected()
       }
 
@@ -313,6 +318,23 @@ class APLInterpreter( private val key: CharacterKey ) {
         error( "Nothing named '" + name + "'" )
     } while ( ! in.isEmpty )
   }
+
+  def save(): Unit = {
+    in.skipWhitespace()
+    val name = readName()
+    writeEnvTo( new File( "." + name + "_env.ws" ) )
+    writeEnvTo( new File( "." + name + "_programs.ws" ) )
+    println( name + " SAVED" )
+  }
+
+  def writeAny( obj: Any )( file: File ) = {
+    val out = new FileOutputStream( file )
+    out write ( Marshal dump obj )
+    out.close()
+  }
+
+  val writeEnvTo = writeAny( env ) _
+  val writeProgramsTo = writeAny( programs ) _
 
   def program(): Unit = {
     in.eat( key.DEL )
