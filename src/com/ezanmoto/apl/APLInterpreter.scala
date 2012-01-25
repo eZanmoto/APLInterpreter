@@ -1,13 +1,12 @@
 package com.ezanmoto.apl
 
 import com.ezanmoto.apl.Type._
+import com.ezanmoto.apl.char.CharacterKey
 
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
-class APLInterpreter {
-
-  private val key: CharacterKey = QWERTY
+class APLInterpreter( private val key: CharacterKey ) {
 
   private var line = ""
 

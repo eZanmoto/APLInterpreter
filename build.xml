@@ -33,6 +33,12 @@
 
     <target name="compile">
         <mkdir dir="${classes.dir}"/>
+        <scalac srcdir="${production.src}/com/ezanmoto/apl/char"
+                destdir="${classes.dir}" classpathref="build.classpath"
+                deprecation="on"/>
+        <scalac srcdir="utf16" destdir="${classes.dir}" encoding="utf16"
+                classpathref="build.classpath" deprecation="on"
+                sourcepath="${production.src}"/>
         <scalac srcdir="${production.src}" destdir="${classes.dir}"
                 classpathref="build.classpath" deprecation="on"/>
     </target>
