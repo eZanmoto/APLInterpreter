@@ -1,6 +1,6 @@
 package com.ezanmoto.apl
 
-trait Program {
+trait Program extends scala.Serializable {
   val isNiladic = ! isMonadic && ! isDyadic
   def isMonadic: Boolean
   def isDyadic: Boolean

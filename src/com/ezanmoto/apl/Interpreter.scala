@@ -33,8 +33,8 @@ object Interpreter {
   def getKeyType(): CharacterKey = {
     println( "Please enter keyboard type:\n\n"
            + "1: QWERTY\n"
-           + "2: APL\n\n"
-           + "> " );
+           + "2: APL\n" )
+    print( "> " )
     val scanner = new Scanner( System.in )
     if ( scanner hasNextInt ) {
       scanner nextInt match {
