@@ -76,14 +76,20 @@ class APLInterpreter( private val key: CharacterKey ) {
           }
       env = env + ( name -> entry )
     } else { // Start of expression
-      var v: Variable = lookup( name ) match {
-        case Left( variable ) => variable
-        case Right( program ) => call( program, expression() )
-      }
+      var v: Variable = callMonadicProgram( name )
       if ( None != index )
         v = v at index.get
       println( expressionAfter( v ) )
     }
+  }
+
+  def callMonadicProgram( name: String ): Variable = lookup( name ) match {
+    case Left( variable ) => variable
+    case Right( program ) =>
+      if ( program isMonadic )
+        call( program, expression() )
+      else
+        throw new RuntimeException( "'" + name + "' is not monadic" )
   }
 
   def readIndex(): Variable = {
@@ -99,6 +105,24 @@ class APLInterpreter( private val key: CharacterKey ) {
   def call( program: Program, parameter: Variable ): Variable = {
     val backup = env
     env = env + ( program.arg1Name -> Left( parameter ) )
+    call( program )
+    val result = ( env get program.returnName ) match {
+      case Some( value ) =>
+        value match {
+          case Left( variable ) => variable
+          case Right( _ ) =>
+            throw new RuntimeException( "Cannot define programs in programs" )
+        }
+      case None => error( "Return value '" + program.returnName + "' not set" )
+    }
+    env = backup
+    result
+  }
+
+  def call( program: Program, arg1: Variable, arg2: Variable ): Variable = {
+    val backup = env
+    env = env + ( program.arg1Name -> Left( arg1 ) )
+    env = env + ( program.arg2Name -> Left( arg2 ) )
     call( program )
     val result = ( env get program.returnName ) match {
       case Some( value ) =>
@@ -151,19 +175,13 @@ class APLInterpreter( private val key: CharacterKey ) {
           expressionAfter( e )
         }
         case '\'' => Variable( string() )
-        case Uppercase( _ ) => {
-          val name = readName()
-          lookup( name ) match {
-            case Left( variable ) => variable
-            case Right( program ) => call( program, expression() )
-          }
-        }
+        case Uppercase( _ ) => callMonadicProgram( readName() )
         case key.MACRON | Integer( _ ) => integerOrListAfter( signedInteger() )
-        case _ => unaryFunction()
+        case _ => monadicFunction()
       }
   }
 
-  def unaryFunction(): Variable = in.peek match {
+  def monadicFunction(): Variable = in.peek match {
     case key.IOTA => in.eat( key.IOTA ); expression() interval
     case key.RHO  => in.eat( key.RHO  ); Variable( expression() length )
     case '+' => in.eat( "+/" ); expression() sum
@@ -259,7 +277,24 @@ class APLInterpreter( private val key: CharacterKey ) {
       in.eat( key.UP_STILE ); expressionAfter( a max expression() )
     case key.DOWN_STILE =>
       in.eat( key.DOWN_STILE ); expressionAfter( a min expression() )
-    case _   => a
+    case _   => dyadicProgram( a )
+  }
+
+  def dyadicProgram( a: Variable ): Variable = in.peek match {
+    case Uppercase( _ ) => {
+      var name = readName()
+      lookup( name ) match {
+        case Left( variable ) =>
+          throw new RuntimeException( "'" + name
+            + "' is a variable, expected dyadic program" )
+        case Right( program ) =>
+          if ( program isDyadic )
+            expressionAfter( call( program, a, expression() ) )
+          else
+            throw new RuntimeException( "'" + name + "' is not dyadic" )
+      }
+    }
+    case _ => a
   }
 
   def string(): String = {
@@ -361,7 +396,17 @@ class APLInterpreter( private val key: CharacterKey ) {
             name = readName()
             in.skipWhitespace()
             val argName = readName()
-            new MonadicProgram( name, Nil, resultName, argName )
+            in.skipWhitespace()
+            if ( in.isEmpty )
+              new MonadicProgram( name, resultName, argName )
+            else if ( in.peek >= 'A' && in.peek <= 'Z' ) {
+              val arg1Name = name
+              name = argName
+              val arg2Name = readName()
+              new DyadicProgram( name, resultName, arg1Name, arg2Name )
+            }
+            else
+              unexpected()
           } else
             new APLProgram( name )
       }

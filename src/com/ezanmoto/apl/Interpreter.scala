@@ -36,14 +36,22 @@ object Interpreter {
            + "2: APL\n" )
     print( "> " )
     val scanner = new Scanner( System.in )
-    if ( scanner hasNextInt ) {
-      scanner nextInt match {
-        case 1 => QWERTY
-        case 2 => APLLayout
-        case _ => throw new RuntimeException( "Not a keyboard type" );
+    var keyType: Option[CharacterKey] = None
+    while ( None == keyType ) {
+      if ( scanner hasNextInt ) {
+        keyType = scanner.nextInt() match {
+          case 1 => Some( QWERTY )
+          case 2 => Some( APLLayout )
+          case n: Int => {
+            println( n + " is not a keyboard type" )
+            None
+          }
+        }
+      } else {
+        println( "[!] Please enter an integer" )
+        scanner.next()
       }
-    } else {
-      throw new RuntimeException( "Need an integer" );
     }
+    keyType getOrElse( QWERTY )
   }
 }
