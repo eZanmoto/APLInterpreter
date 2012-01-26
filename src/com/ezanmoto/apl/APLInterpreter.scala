@@ -15,9 +15,9 @@ class APLInterpreter( private val key: CharacterKey ) {
 
   private var line = ""
 
-  private var env = Map[String, Either[Variable, Program]]()
-
   private var in = new LookaheadStream( line )
+
+  private var workspace: Workspace = Workspace()
 
   var isRunning = true
 
@@ -49,7 +49,7 @@ class APLInterpreter( private val key: CharacterKey ) {
       if ( ! in.isEmpty && in.peek == '[' ) Some( readIndex() ) else None
     in.skipWhitespace()
     if ( in.isEmpty ) { // Print value
-      lookup( name ) match {
+      ( workspace get name ) match {
         case Left( variable ) =>
           println( if ( index == None ) variable else variable at index.get )
         case Right( program ) =>
@@ -64,17 +64,17 @@ class APLInterpreter( private val key: CharacterKey ) {
     } else if ( in.peek == key.LEFT_ARROW ) { // Assignment
       in.eat( key.LEFT_ARROW )
       in.skipWhitespace()
-      val entry = 
+      val entry: Variable = 
         if ( index == None )
-          Left( expression() )
+          expression()
         else
-          lookup( name ) match {
+          ( workspace get name ) match {
             case Left( variable ) =>
-              Left( variable replace ( index.get, expression() ) )
+              variable replace ( index.get, expression() )
             case Right( _ ) =>
               throw new RuntimeException( "Cannot index-assign program" )
           }
-      env = env + ( name -> entry )
+      workspace = workspace + ( name, entry )
     } else { // Start of expression
       var v: Variable = callMonadicProgram( name )
       if ( None != index )
@@ -83,14 +83,12 @@ class APLInterpreter( private val key: CharacterKey ) {
     }
   }
 
-  def callMonadicProgram( name: String ): Variable = lookup( name ) match {
-    case Left( variable ) => variable
-    case Right( program ) =>
-      if ( program isMonadic )
-        call( program, expression() )
-      else
-        throw new RuntimeException( "'" + name + "' is not monadic" )
-  }
+  def callMonadicProgram( name: String ): Variable =
+    ( workspace get name ) match {
+      case Left( variable ) => variable
+      case Right( program ) => call( workspace getMonadicProgram name,
+                                     expression() )
+    }
 
   def readIndex(): Variable = {
     in eat '['
@@ -103,45 +101,24 @@ class APLInterpreter( private val key: CharacterKey ) {
   def call( program: Program ): Unit = program.lines.foreach( this interpret _ )
 
   def call( program: Program, parameter: Variable ): Variable = {
-    val backup = env
-    env = env + ( program.arg1Name -> Left( parameter ) )
+    val backup = workspace
+    workspace = workspace + ( program.arg1Name, parameter )
     call( program )
-    val result = ( env get program.returnName ) match {
-      case Some( value ) =>
-        value match {
-          case Left( variable ) => variable
-          case Right( _ ) =>
-            throw new RuntimeException( "Cannot define programs in programs" )
-        }
+    val result = ( workspace getVariable program.returnName ) match {
+      case Some( variable ) => variable
       case None => error( "Return value '" + program.returnName + "' not set" )
     }
-    env = backup
+    workspace = backup
     result
   }
 
   def call( program: Program, arg1: Variable, arg2: Variable ): Variable = {
-    val backup = env
-    env = env + ( program.arg1Name -> Left( arg1 ) )
-    env = env + ( program.arg2Name -> Left( arg2 ) )
-    call( program )
-    val result = ( env get program.returnName ) match {
-      case Some( value ) =>
-        value match {
-          case Left( variable ) => variable
-          case Right( _ ) =>
-            throw new RuntimeException( "Cannot define programs in programs" )
-        }
-      case None => error( "Return value '" + program.returnName + "' not set" )
-    }
-    env = backup
+    val backup = workspace
+    workspace = workspace + ( program.arg2Name, arg2 )
+    val result = call( program, arg1 )
+    workspace = backup
     result
   }
-
-  def lookup( name: String ): Either[Variable, Program] =
-    ( env get name ) match {
-      case Some( x ) => x
-      case None      => error( "'" + name + "' has not been declared" )
-    }
 
   def readName(): String = {
     in.skipWhitespace()
@@ -283,7 +260,7 @@ class APLInterpreter( private val key: CharacterKey ) {
   def dyadicProgram( a: Variable ): Variable = in.peek match {
     case Uppercase( _ ) => {
       var name = readName()
-      lookup( name ) match {
+      ( workspace get name ) match {
         case Left( variable ) =>
           throw new RuntimeException( "'" + name
             + "' is a variable, expected dyadic program" )
@@ -339,8 +316,8 @@ class APLInterpreter( private val key: CharacterKey ) {
     do {
       in.skipWhitespace()
       val name = readName()
-      if ( env contains name )
-        env = env - name
+      if ( workspace contains name )
+        workspace = workspace - name
       else
         error( "Nothing named '" + name + "'" )
     } while ( ! in.isEmpty )
@@ -350,7 +327,7 @@ class APLInterpreter( private val key: CharacterKey ) {
     in.skipWhitespace()
     val name = readName()
     val fos  = new FileOutputStream( workspaceFile( name ) )
-    fos.write( Marshal dump env )
+    fos.write( Marshal dump workspace )
     fos.close()
     println( name + " SAVED" )
   }
@@ -361,7 +338,7 @@ class APLInterpreter( private val key: CharacterKey ) {
     val fis = new FileInputStream( workspaceFile( name ) )
     val bytes =
       Stream.continually( fis.read ).takeWhile( -1 != ).map( _.toByte ).toArray
-    env = Marshal.load[Map[String, Either[Variable, Program]]]( bytes )
+    workspace = Marshal.load[Workspace]( bytes )
     println( name + " LOADED" )
   }
 
@@ -373,21 +350,17 @@ class APLInterpreter( private val key: CharacterKey ) {
     var name = readName()
     in.skipWhitespace()
     if ( ! in.isEmpty && in.peek == '[' ) {
-      lookup( name) match {
+      ( workspace get name ) match {
         case Left( variable ) =>
           throw new RuntimeException( "'" + name + "' is a variable" )
         case Right( program ) =>
-          env = env + ( name -> Right( programEdit( program ) ) )
+          workspace = workspace + ( name, programEdit( program ) )
       }
       in.skipWhitespace()
       in.eat( key.DEL )
     } else {
-      val program = env get name match {
-        case Some( p ) => p match {
-          case Left( variable ) =>
-            throw new RuntimeException( "'" + name + "' is a variable" )
-          case Right( program ) => program
-        }
+      val program = workspace getProgram name match {
+        case Some( program ) => program
         case None =>
           if ( ! in.isEmpty && in.peek == key.LEFT_ARROW ) {
             in.eat( key.LEFT_ARROW )
@@ -410,7 +383,7 @@ class APLInterpreter( private val key: CharacterKey ) {
           } else
             new APLProgram( name )
       }
-      env = env + ( name -> Right( program ++ readProgramLines() ) )
+      workspace = workspace + ( name, ( program ++ readProgramLines() ) )
     }
   }
 

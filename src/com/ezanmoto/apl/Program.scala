@@ -49,6 +49,8 @@ class MonadicProgram private ( private val program: Program
                              , override val arg1Name: String
                              ) extends Program {
 
+  require( returnName != arg1Name, "return value has same name as argument 1" )
+
   def this( name: String, lines: List[String], returnName: String,
             arg1Name: String ) =
     this( new APLProgram( name, lines ), returnName, arg1Name )
@@ -84,6 +86,9 @@ class MonadicProgram private ( private val program: Program
 class DyadicProgram private ( private val program: MonadicProgram
                             , override val arg2Name: String
                             ) extends Program {
+
+  require( arg2Name != program.returnName, "return has same name as arg 2" )
+  require( arg2Name != program.arg1Name, "arg 1 has same name as arg 2" )
 
   def this( name: String, lines: List[String], returnName: String,
             arg1Name: String, arg2Name: String ) =
