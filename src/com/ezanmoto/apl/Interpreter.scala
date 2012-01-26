@@ -18,7 +18,7 @@ object Interpreter {
     val interpreter = new APLInterpreter( getKeyType() )
     val reader = new InputStreamReader( System.in )
     val in = new BufferedReader( reader )
-    println( "CLEAR WS" )
+    println( interpreter.workspaceName )
     while ( interpreter isRunning ) {
       try {
         print( "      " )

@@ -13,11 +13,15 @@ import java.io.InputStreamReader
 
 class APLInterpreter( private val key: CharacterKey ) {
 
+  private val CURRENT_DIR = new File( "." )
+
   private var line = ""
 
   private var in = new LookaheadStream( line )
 
   private var workspace: Workspace = Workspace()
+
+  def workspaceName = workspace.name
 
   var isRunning = true
 
@@ -308,7 +312,17 @@ class APLInterpreter( private val key: CharacterKey ) {
         case 'O' => in.eat( "OFF" ); isRunning = false; println( "Goodbye." )
         case 'E' => in.eat( "ERASE" ); erase()
         case 'S' => in.eat( "SAVE" ); save()
-        case 'L' => in.eat( "LOAD" ); load()
+        case 'L' => in.eat( 'L' ); lCommand()
+        case _   => unexpected()
+      }
+
+  def lCommand(): Unit =
+    if ( in.isEmpty )
+      error( "Expected further input" )
+    else
+      in.peek match {
+        case 'O' => in.eat( "OAD" ); load()
+        case 'I' => in.eat( "IB" ); lib()
         case _   => unexpected()
       }
 
@@ -340,6 +354,16 @@ class APLInterpreter( private val key: CharacterKey ) {
       Stream.continually( fis.read ).takeWhile( -1 != ).map( _.toByte ).toArray
     workspace = Marshal.load[Workspace]( bytes )
     println( name + " LOADED" )
+  }
+
+  val Reggie = """\.(.*)\.ws""".r
+
+  def lib(): Unit = {
+    val files = CURRENT_DIR.listFiles.filter( _.isFile )
+    files foreach ( file => print( file.getName match {
+      case Reggie( v ) => v.toUpperCase + " "
+      case _ => ""
+    } ) )
   }
 
   def workspaceFile( name: String ) = new File( "." + name.toLowerCase + ".ws" )
